@@ -3,6 +3,7 @@ import argparse
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import uuid
@@ -14,6 +15,11 @@ spec.loader.exec_module(stack_lock)
 
 
 def verify_context(environment, tenant, subscription, generation):
+    uuid.UUID(tenant)
+    uuid.UUID(subscription)
+    azure_cli = shutil.which("az")
+    if not azure_cli:
+        raise FileNotFoundError("Azure CLI executable was not found on PATH.")
     result = subprocess.run(
         ["azd", "env", "get-values", "--environment", environment, "--no-prompt"],
         text=True, capture_output=True, check=True, timeout=60,
@@ -33,7 +39,7 @@ def verify_context(environment, tenant, subscription, generation):
     if any(values.get(key, "").lower() != value.lower() for key, value in expected.items()):
         raise ValueError("azd environment does not match the requested stack identity.")
     account = subprocess.run(
-        ["az", "account", "show", "--subscription", subscription, "--output", "json", "--only-show-errors"],
+        [azure_cli, "account", "show", "--subscription", subscription, "--output", "json", "--only-show-errors"],
         text=True, capture_output=True, check=True, timeout=60,
     )
     account = json.loads(account.stdout)

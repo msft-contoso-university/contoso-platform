@@ -28,16 +28,26 @@ class LockedAzdTests(unittest.TestCase):
             subprocess.CompletedProcess([], 0, stdout=env_output),
             subprocess.CompletedProcess([], 0, stdout=json.dumps(account)),
         ]
-        with patch.object(module.subprocess, "run", side_effect=responses):
+        with patch.object(module.shutil, "which", return_value="resolved-azure-cli"), \
+             patch.object(module.subprocess, "run", side_effect=responses) as run:
             module.verify_context(*ARGS)
+            self.assertEqual("resolved-azure-cli", run.call_args.args[0][0])
         account["tenantId"] = "33333333-3333-4333-8333-333333333333"
         responses = [
             subprocess.CompletedProcess([], 0, stdout=env_output),
             subprocess.CompletedProcess([], 0, stdout=json.dumps(account)),
         ]
-        with patch.object(module.subprocess, "run", side_effect=responses):
+        with patch.object(module.shutil, "which", return_value="resolved-azure-cli"), \
+             patch.object(module.subprocess, "run", side_effect=responses):
             with self.assertRaisesRegex(ValueError, "caller context"):
                 module.verify_context(*ARGS)
+
+    def test_missing_azure_cli_fails_before_context_checks(self):
+        with patch.object(module.shutil, "which", return_value=None), \
+             patch.object(module.subprocess, "run") as run:
+            with self.assertRaisesRegex(FileNotFoundError, "Azure CLI"):
+                module.verify_context(*ARGS)
+            run.assert_not_called()
 
     def test_success_inherits_fresh_owner_and_releases_only_that_owner(self):
         with patch.object(module, "verify_context"), \
