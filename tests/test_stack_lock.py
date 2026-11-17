@@ -48,12 +48,17 @@ class StackLockTests(unittest.TestCase):
 
     def test_release_requires_owner_and_current_blob_sha(self):
         with patch.object(module, "gh_api", side_effect=[record(), {}]) as api:
-            module.release(PATHNAME, OWNER)
+            module.release(PATHNAME, OWNER, "create", "one")
         self.assertEqual(api.call_args_list[1].args[2]["sha"], "abc123")
         with patch.object(module, "gh_api", return_value=record(OTHER)) as api:
             with self.assertRaisesRegex(module.LockError, "another operation"):
-                module.release(PATHNAME, OWNER)
+                module.release(PATHNAME, OWNER, "create", "one")
             self.assertEqual(api.call_count, 1)
+        for action, generation in (("update", "one"), ("create", "two")):
+            with patch.object(module, "gh_api", return_value=record()) as api:
+                with self.assertRaisesRegex(module.LockError, "action or generation"):
+                    module.release(PATHNAME, OWNER, action, generation)
+                self.assertEqual(api.call_count, 1)
 
     def test_verify_requires_exact_owner_action_and_generation(self):
         with patch.object(module, "gh_api", return_value=record()):

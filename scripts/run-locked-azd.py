@@ -71,7 +71,7 @@ def run_locked(environment, tenant, subscription, generation, action):
     if completed.returncode != 0:
         print(f"Operation {owner} failed; the stack lock is retained for review.", file=sys.stderr)
         return completed.returncode
-    stack_lock.release(path, owner)
+    stack_lock.release(path, owner, action, generation)
     return 0
 
 

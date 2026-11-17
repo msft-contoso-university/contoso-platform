@@ -122,8 +122,9 @@ directory; it does not establish approval or provenance, retrieve, import or
 deploy the image, or prove that a registry preserved its digest.
 
 `scripts\stack-lock.py` implements an experimental GitHub-backed stack lock:
-create is atomic and release checks the owner's operation ID and current blob
-SHA. All generations of the same tenant/subscription/environment share a lock.
+create is atomic and release checks the owner's operation ID, action,
+generation and current blob SHA. All generations of the same
+tenant/subscription/environment share a lock.
 It requires a separately provisioned `adlc-state` branch and tightly scoped
 write credentials, neither of which has been configured or verified. The
 lifecycle does not yet invoke it. Do not clear an abandoned lock until the
@@ -134,10 +135,14 @@ It cannot run via its CLI, does not integrate hook verification, and blocks
 destroy entirely. It does not satisfy the required direct `azd up` and
 confirmed `azd down` lifecycle.
 
-`scripts\get-azd-ancestor.ps1` is a read-only native-hook identity spike: it
-finds a matching live azd ancestor and returns its PID and creation identity
-(including the boot and PID-namespace IDs on Linux),
-or fails closed. It creates no nonce, grants no lock ownership, and is not
-wired into the lifecycle. Independent `azd hooks run` tests do not establish
-real `up`/`down` hook ordering, crash recovery, security of a nonce store, or
-cross-host process identity. All lifecycle guards remain in place.
+`scripts\get-azd-ancestor.ps1` identifies a live azd ancestor and can require
+an `up` or `down` command, rejecting independent hook runs. The experimental
+`scripts\native-stack-lock.ps1` composes action-bound identity, an exclusively
+created local private owner file and the GitHub CAS lock, currently for `up`
+only. The random private nonce never enters the public lock; the private file
+itself is the local capability, not independent hook authentication. These
+functions are not wired into lifecycle hooks and have created no real lock
+state. Tests do not establish actual `up`/`down` ordering, crash recovery,
+ancestor-path replacement resistance, trusted caller context or protection
+against another process running as the same user. All lifecycle guards remain
+in place; do not activate the prototype as a deployment lock.

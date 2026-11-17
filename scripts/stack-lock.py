@@ -89,11 +89,12 @@ def acquire(path, operation_id, action, generation):
         raise LockError("Stack is locked by another operation; no operation was started") from error
 
 
-def release(path, operation_id):
+def release(path, operation_id, action, generation):
     owner = str(uuid.UUID(operation_id))
     sha, current = read_lock(path)
-    if current.get("operationId") != owner:
-        raise LockError("Lock belongs to another operation; refusing to release it")
+    if (current.get("operationId") != owner or current.get("action") != action
+            or current.get("generation") != generation):
+        raise LockError("Lock belongs to another operation, action or generation; refusing to release it")
     gh_api("DELETE", path, {
         "message": f"Release ADLC stack lock {owner}",
         "branch": STATE_BRANCH,
@@ -117,18 +118,18 @@ def main():
     parser.add_argument("--environment", required=True)
     parser.add_argument("--generation", required=True)
     parser.add_argument("--operation-id", required=True)
-    parser.add_argument("--action", choices=("create", "update", "promote", "destroy"))
+    parser.add_argument("--action", choices=("create", "update", "promote", "destroy", "up", "down"))
     args = parser.parse_args()
     try:
-        if args.command in ("acquire", "verify") and args.action is None:
-            raise ValueError("--action is required to acquire or verify a lock")
+        if args.action is None:
+            raise ValueError("--action is required to acquire, verify or release a lock")
         path = lock_path(args.tenant, args.subscription, args.environment, args.generation)
         if args.command == "acquire":
             acquire(path, args.operation_id, args.action, args.generation)
         elif args.command == "verify":
             verify(path, args.operation_id, args.action, args.generation)
         else:
-            release(path, args.operation_id)
+            release(path, args.operation_id, args.action, args.generation)
     except (ValueError, LockError) as error:
         print(f"Stack lock failed: {error}", file=sys.stderr)
         return 1

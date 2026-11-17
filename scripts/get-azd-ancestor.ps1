@@ -1,5 +1,50 @@
+param(
+    [ValidateSet('up', 'down')]
+    [string]$ExpectedAction
+)
+
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'azd-action.ps1')
+
+function Get-ProcessArguments([int]$ProcessId) {
+    if ($IsWindows) {
+        $process = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId=$ProcessId"
+        if ($null -eq $process -or [string]::IsNullOrEmpty($process.CommandLine)) {
+            throw 'Cannot inspect azd process arguments.'
+        }
+        if (-not ('AdlcCommandLine' -as [type])) {
+            Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class AdlcCommandLine {
+    [DllImport("shell32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+    public static extern IntPtr CommandLineToArgvW(string commandLine, out int argumentCount);
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr LocalFree(IntPtr memory);
+}
+'@
+        }
+        $count = 0
+        $buffer = [AdlcCommandLine]::CommandLineToArgvW($process.CommandLine, [ref]$count)
+        if ($buffer -eq [IntPtr]::Zero -or $count -lt 1) { throw 'Cannot parse azd process arguments.' }
+        try {
+            $result = for ($index = 0; $index -lt $count; $index++) {
+                [Runtime.InteropServices.Marshal]::PtrToStringUni(
+                    [Runtime.InteropServices.Marshal]::ReadIntPtr($buffer, $index * [IntPtr]::Size))
+            }
+            return ,([string[]]$result)
+        }
+        finally {
+            [void][AdlcCommandLine]::LocalFree($buffer)
+        }
+    }
+    if (-not $IsLinux) { throw 'Only Windows and Linux process identities are supported.' }
+    $bytes = [System.IO.File]::ReadAllBytes("/proc/$ProcessId/cmdline")
+    $text = [System.Text.UTF8Encoding]::new($false, $true).GetString($bytes)
+    if (-not $text.EndsWith([string][char]0)) { throw 'Cannot parse azd process arguments.' }
+    return ,([string[]]$text.TrimEnd([char]0).Split([char]0))
+}
 
 function Get-ProcessIdentity([int]$ProcessId) {
     if ($IsWindows) {
@@ -45,12 +90,18 @@ $current = $PID
 for ($depth = 0; $depth -lt 12 -and $current -gt 0; $depth++) {
     $process = Get-ProcessIdentity $current
     if ([string]::Equals([System.IO.Path]::GetFullPath($process.executable), $target, $comparison)) {
+        if ($ExpectedAction) {
+            $action = Get-AzdCommandAction (Get-ProcessArguments $current)
+            if ($action -ne $ExpectedAction) { throw 'azd command does not match the expected action.' }
+        }
         $confirm = Get-ProcessIdentity $current
         if ($confirm.start -ne $process.start -or
             -not [string]::Equals($confirm.executable, $process.executable, $comparison)) {
             throw 'azd process identity changed during inspection.'
         }
-        @{ pid = $current; start = $process.start } | ConvertTo-Json -Compress
+        $result = @{ pid = $current; start = $process.start }
+        if ($ExpectedAction) { $result.action = $action }
+        $result | ConvertTo-Json -Compress
         return
     }
     if ($process.parent -eq $current) { throw 'Invalid process ancestry.' }

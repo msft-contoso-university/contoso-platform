@@ -35,6 +35,9 @@ jobs:
       - name: Test private SQL grant orchestration
         shell: pwsh
         run: ./tests/test-invoke-private-sql-grants.ps1
+      - name: Test native azd action binding
+        shell: pwsh
+        run: ./tests/test-azd-action.ps1
       - name: Install pinned Bicep
         run: az bicep install --version v0.41.2
       - name: Verify compiled private API security properties
