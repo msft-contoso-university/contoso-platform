@@ -22,10 +22,15 @@ function Get-ProcessIdentity([int]$ProcessId) {
     if ($fields.Count -lt 20) { throw 'Incomplete process identity.' }
     $executable = [System.IO.File]::ResolveLinkTarget("/proc/$ProcessId/exe", $true)
     if ($null -eq $executable) { throw 'Cannot resolve process executable.' }
+    $bootId = [guid]::Parse([System.IO.File]::ReadAllText('/proc/sys/kernel/random/boot_id').Trim()).ToString()
+    $namespace = (Get-Item -LiteralPath '/proc/self/ns/pid' -Force).LinkTarget
+    if ($namespace -notmatch '^pid:\[([0-9]+)\]$') { throw 'Cannot establish PID namespace identity.' }
+    $namespaceId = $Matches[1]
+    if ($fields[19] -notmatch '^[0-9]+$') { throw 'Invalid process start identity.' }
     return @{
         pid = $ProcessId
         parent = [int]$fields[1]
-        start = [string]$fields[19]
+        start = "${bootId}:${namespaceId}:$($fields[19])"
         executable = $executable.FullName
     }
 }

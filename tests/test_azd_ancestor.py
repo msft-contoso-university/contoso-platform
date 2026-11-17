@@ -1,7 +1,9 @@
 import json
 import os
+import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -51,8 +53,11 @@ class AzdAncestorTests(unittest.TestCase):
             self.assertEqual(identities[0], identities[1])
             self.assertEqual(identities[2], identities[3])
             self.assertNotEqual(identities[0], identities[2])
-            self.assertTrue(all(set(identity) == {"pid", "start"} and identity["start"].isdigit()
+            self.assertTrue(all(set(identity) == {"pid", "start"} and
+                                re.fullmatch(r"(?:[0-9a-f-]{36}:[0-9]+:)?[0-9]+", identity["start"])
                                 for identity in identities))
+            if sys.platform.startswith("linux"):
+                self.assertTrue(all(":" in identity["start"] for identity in identities))
 
 
 if __name__ == "__main__":
