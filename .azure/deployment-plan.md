@@ -51,6 +51,10 @@ retain their separate gates.
   from stack outputs and verifies workload attachment and internal Container
   Apps environment metadata. Enrollments app IDs must come from the later
   image-release phase; that phase and hook ordering are not yet integrated.
+  The SID-bound replacement validates the complete three-service database set
+  before connecting and refuses unexpected direct roles or explicit grants for
+  either identity class; only migration identities receive `db_ddladmin`. It
+  remains locally unit-tested only, not verified against Azure SQL.
 - [x] Dev and staging private Students and Academics App Service definitions
   compile, including private endpoints, managed identities, Entra-only SQL
   connection strings and resource-scoped telemetry roles. Workload deployment,

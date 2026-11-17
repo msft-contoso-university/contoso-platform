@@ -22,6 +22,21 @@ TARGET = {
     "migration": "students-migration",
     "migrationClientId": "01234567-89ab-cdef-0123-456789abcdef",
 }
+ACADEMICS = {
+    "database": "academics",
+    "runtime": "academics-api",
+    "runtimeClientId": "10112233-4455-6677-8899-aabbccddeeff",
+    "migration": "academics-migration",
+    "migrationClientId": "11234567-89ab-cdef-0123-456789abcdef",
+}
+ENROLLMENTS = {
+    "database": "enrollments",
+    "runtime": "enrollments-api",
+    "runtimeClientId": "20112233-4455-6677-8899-aabbccddeeff",
+    "migration": "enrollments-migration",
+    "migrationClientId": "21234567-89ab-cdef-0123-456789abcdef",
+}
+TARGETS = [TARGET, ACADEMICS, ENROLLMENTS]
 
 
 class SqlGrantTests(unittest.TestCase):
@@ -35,34 +50,55 @@ class SqlGrantTests(unittest.TestCase):
         self.assertNotIn(b"\r\n", script)
 
     def test_requires_distinct_runtime_and_migration_identities(self):
-        target = dict(TARGET, migration="STUDENTS-API")
+        targets = [dict(TARGET, migration="STUDENTS-API"), ACADEMICS, ENROLLMENTS]
         with self.assertRaisesRegex(ValueError, "distinct"):
-            module.validate("school-sql", CLIENT, [target])
+            module.validate("school-sql", CLIENT, targets)
 
     def test_rejects_non_service_database_and_unsafe_identity(self):
         for target in (dict(TARGET, database="master"), dict(TARGET, runtime="api;DROP")):
             with self.subTest(target=target), self.assertRaises(ValueError):
-                module.validate("school-sql", CLIENT, [target])
+                module.validate("school-sql", CLIENT, [target, ACADEMICS, ENROLLMENTS])
 
     def test_rejects_reused_or_invalid_client_ids(self):
         for value in (TARGET["runtimeClientId"], CLIENT, "00000000-0000-0000-0000-000000000000", "not-a-guid"):
             with self.subTest(value=value), self.assertRaises(ValueError):
-                module.validate("school-sql", CLIENT, [dict(TARGET, migrationClientId=value)])
-        other = dict(TARGET, database="academics", runtime="academics-api", migration="academics-migration")
+                module.validate(
+                    "school-sql", CLIENT, [dict(TARGET, migrationClientId=value), ACADEMICS, ENROLLMENTS]
+                )
+        other = dict(ACADEMICS, runtimeClientId=TARGET["runtimeClientId"])
         with self.assertRaisesRegex(ValueError, "distinct"):
-            module.validate("school-sql", CLIENT, [TARGET, other])
+            module.validate("school-sql", CLIENT, [TARGET, other, ENROLLMENTS])
+
+    def test_requires_all_service_databases_before_download_or_sql(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "output.json"
+            with patch.object(module, "install_binary") as install_binary:
+                with self.assertRaisesRegex(ValueError, "all three service database grants"):
+                    module.run("school-sql", CLIENT, [TARGET], str(output))
+            install_binary.assert_not_called()
+            self.assertFalse(output.exists())
 
     def test_runtime_never_gets_ddl_and_migration_uses_separate_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "output.json"
             with patch.object(module, "install_binary"), patch.object(module.subprocess, "run") as process:
-                module.run("school-sql", CLIENT, [TARGET], str(output))
-            command = process.call_args.args[0]
+                module.run("school-sql", CLIENT, TARGETS, str(output))
+            command = process.call_args_list[0].args[0]
             query = command[command.index("-Q") + 1]
             self.assertIn("CREATE USER [students-api] WITH SID = 0x33221100554477668899aabbccddeeff, TYPE = E", query)
             self.assertIn("CREATE USER [students-migration] WITH SID = 0x67452301ab89efcd0123456789abcdef, TYPE = E", query)
             self.assertIn("Existing SQL principal does not match", query)
-            self.assertIn("Runtime identity has unexpected explicit", query)
+            self.assertIn(
+                "m.name = N'students-api' AND r.name NOT IN (N'db_datareader', N'db_datawriter')",
+                query,
+            )
+            self.assertIn("Runtime identity has an unexpected explicit database grant", query)
+            self.assertIn(
+                "m.name = N'students-migration' AND r.name NOT IN "
+                "(N'db_datareader', N'db_datawriter', N'db_ddladmin')",
+                query,
+            )
+            self.assertIn("Migration identity has an unexpected explicit database grant", query)
             self.assertNotIn("ALTER ROLE [db_ddladmin] ADD MEMBER [students-api]", query)
             self.assertIn("ALTER ROLE [db_ddladmin] ADD MEMBER [students-migration]", query)
             self.assertIn("-b", command)
@@ -74,7 +110,7 @@ class SqlGrantTests(unittest.TestCase):
             with patch.object(module, "install_binary"), \
                  patch.object(module.subprocess, "run", side_effect=module.subprocess.CalledProcessError(1, "sqlcmd")):
                 with self.assertRaises(module.subprocess.CalledProcessError):
-                    module.run("school-sql", CLIENT, [TARGET], str(output))
+                    module.run("school-sql", CLIENT, TARGETS, str(output))
             self.assertFalse(output.exists())
 
     def test_binary_download_checks_digest_before_extracting(self):
