@@ -4,11 +4,6 @@ Set-StrictMode -Version Latest
 $subscription = '22222222-2222-4222-8222-222222222222'
 $tenant = '11111111-1111-4111-8111-111111111111'
 $shared = 'adlc-shared'
-$targets = @(
-    @{ database = 'students'; runtime = 'students-api'; migration = 'students-migration' }
-    @{ database = 'academics'; runtime = 'academics-api'; migration = 'academics-migration' }
-    @{ database = 'enrollments'; runtime = 'enrollments-api'; migration = 'enrollments-migration' }
-) | ConvertTo-Json -Compress
 $global:testValues = @{
     AZURE_SUBSCRIPTION_ID = $subscription
     AZURE_TENANT_ID = $tenant
@@ -25,7 +20,6 @@ foreach ($stage in @('DEV', 'STAGING')) {
     $global:testValues["ADLC_${stage}_SQL_BOOTSTRAP_IDENTITY_ID"] = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.ManagedIdentity/userAssignedIdentities/bootstrap"
     $global:testValues["ADLC_${stage}_SQL_BOOTSTRAP_CLIENT_ID"] = '33333333-3333-4333-8333-333333333333'
     $global:testValues["ADLC_${stage}_SQL_SERVER_NAME"] = "sql-$($stage.ToLowerInvariant())"
-    $global:testValues["ADLC_${stage}_SQL_GRANT_TARGETS"] = $targets
     foreach ($service in @('STUDENTS', 'ACADEMICS', 'ENROLLMENTS')) {
         $global:testValues["ADLC_${stage}_${service}_IDENTITY_NAME"] = "$($service.ToLowerInvariant())-api"
         $global:testValues["ADLC_${stage}_${service}_MIGRATION_IDENTITY_NAME"] = "$($service.ToLowerInvariant())-migration"
@@ -102,11 +96,7 @@ try {
     }
     if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Wrong tenant was not rejected before deployment.' }
     $global:testBadTenant = $false
-    $global:testValues.ADLC_STAGING_SQL_GRANT_TARGETS = @(
-        @{ database = 'students'; runtime = 'students-api'; migration = 'students-api' }
-        @{ database = 'academics'; runtime = 'academics-api'; migration = 'academics-migration' }
-        @{ database = 'enrollments'; runtime = 'enrollments-api'; migration = 'enrollments-migration' }
-    ) | ConvertTo-Json -Compress
+    $global:testValues.ADLC_STAGING_STUDENTS_MIGRATION_IDENTITY_NAME = 'students-api'
     $refused = $false
     try {
         & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
@@ -115,7 +105,7 @@ try {
         $refused = $true
     }
     if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Invalid staging identities were not rejected before dev deployment.' }
-    $global:testValues.ADLC_STAGING_SQL_GRANT_TARGETS = $targets
+    $global:testValues.ADLC_STAGING_STUDENTS_MIGRATION_IDENTITY_NAME = 'students-migration'
     $global:testBadIdentity = $true
     $refused = $false
     try {
@@ -125,16 +115,6 @@ try {
         $refused = $true
     }
     if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Unowned staging identity was not rejected before dev deployment.' }
-    $global:testBadIdentity = $false
-    $global:testValues.ADLC_STAGING_STUDENTS_IDENTITY_NAME = 'different-api'
-    $refused = $false
-    try {
-        & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
-    } catch {
-        if ($_.Exception.Message -notmatch 'stack outputs') { throw }
-        $refused = $true
-    }
-    if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Identity mismatch was not rejected before dev deployment.' }
     Write-Output 'Private SQL grant orchestration tests passed.'
 } finally {
     Remove-Item Function:\azd, Function:\az -ErrorAction SilentlyContinue

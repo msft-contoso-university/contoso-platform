@@ -95,13 +95,19 @@ foreach ($stage in @('DEV', 'STAGING')) {
     $identity = Get-RequiredValue $values "ADLC_${stage}_SQL_BOOTSTRAP_IDENTITY_ID"
     $client = Get-RequiredValue $values "ADLC_${stage}_SQL_BOOTSTRAP_CLIENT_ID"
     $server = Get-RequiredValue $values "ADLC_${stage}_SQL_SERVER_NAME"
-    $targetJson = Get-RequiredValue $values "ADLC_${stage}_SQL_GRANT_TARGETS"
     Assert-ResourceId $identity $subscription $group 'Microsoft.ManagedIdentity/userAssignedIdentities'
     if ($identity -notmatch '(?i)/userAssignedIdentities/[^/]+$') { throw "Invalid $stage bootstrap identity ID." }
     if (-not [guid]::TryParse($client, [ref] [guid]::Empty)) { throw "Invalid $stage bootstrap client ID." }
     if ($server -cnotmatch '^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$') { throw "Invalid $stage SQL server name." }
-    $targets = @(ConvertFrom-Json -InputObject $targetJson -AsHashtable)
-    if ($targets.Count -ne 3) { throw "Expected three service database targets for $stage." }
+    $targets = @(
+        foreach ($service in @('STUDENTS', 'ACADEMICS', 'ENROLLMENTS')) {
+            @{
+                database = $service.ToLowerInvariant()
+                runtime = Get-RequiredValue $values "ADLC_${stage}_${service}_IDENTITY_NAME"
+                migration = Get-RequiredValue $values "ADLC_${stage}_${service}_MIGRATION_IDENTITY_NAME"
+            }
+        }
+    )
     $databases = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $identityNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $bootstrapName = ($identity -split '/')[-1]
@@ -119,12 +125,6 @@ foreach ($stage in @('DEV', 'STAGING')) {
                 $identityName -ieq $bootstrapName -or -not $identityNames.Add($identityName)) {
                 throw "Runtime, migration and bootstrap identities must be distinct for $stage."
             }
-        }
-        $service = $target.database.ToUpperInvariant()
-        $expectedRuntime = Get-RequiredValue $values "ADLC_${stage}_${service}_IDENTITY_NAME"
-        $expectedMigration = Get-RequiredValue $values "ADLC_${stage}_${service}_MIGRATION_IDENTITY_NAME"
-        if ($target.runtime -cne $expectedRuntime -or $target.migration -cne $expectedMigration) {
-            throw "Grant identities for $service do not match the $stage stack outputs."
         }
         $runtimeInfo = Assert-StackIdentity $target.runtime $group $stage
         $migrationInfo = Assert-StackIdentity $target.migration $group $stage
