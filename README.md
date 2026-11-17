@@ -47,3 +47,11 @@ SQL connectivity must use a policy compatible with this port restriction.
 Application Insights local authentication is disabled: workloads need managed
 identity-based telemetry authentication and a scoped ingestion role. Neither
 the role wiring nor end-to-end telemetry has been implemented yet.
+
+`scripts\stack-lock.py` implements an experimental GitHub-backed stack lock:
+create is atomic and release checks the owner's operation ID and current blob
+SHA. All generations of the same tenant/subscription/environment share a lock.
+It requires a separately provisioned `adlc-state` branch and tightly scoped
+write credentials, neither of which has been configured or verified. The
+lifecycle does not yet invoke it. Do not clear an abandoned lock until the
+owning operation is known to have stopped and the exact recovery is approved.
