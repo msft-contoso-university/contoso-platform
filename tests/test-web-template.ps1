@@ -27,7 +27,11 @@ if ($policies.Count -ne 2 -or @($policies | Where-Object { $_.properties.allow }
     throw 'Expected disabled basic publishing and an App Service private endpoint with DNS.'
 }
 $settings = @{}
-foreach ($setting in $site.properties.siteConfig.appSettings) { $settings[$setting.name] = $setting.value }
+$config = @($template.resources | Where-Object type -eq 'Microsoft.Web/sites/config')
+if ($config.Count -ne 1 -or $config[0].name -notlike '*appsettings*') {
+    throw 'Expected an app settings child resource after the Web site.'
+}
+foreach ($setting in $config[0].properties.PSObject.Properties) { $settings[$setting.Name] = $setting.Value }
 if ($settings['AzureAd__ClientCredentials__0__SourceType'] -ne 'SignedAssertionFromManagedIdentity' -or
     $settings['WEBSITES_ENABLE_APP_SERVICE_STORAGE'] -ne 'true' -or
     $settings['DataProtection__KeyPath'] -ne '/home/data-protection-keys' -or
@@ -36,7 +40,9 @@ if ($settings['AzureAd__ClientCredentials__0__SourceType'] -ne 'SignedAssertionF
     $settings.ContainsKey('WEBSITE_SITE_NAME') -or $settings.ContainsKey('WEBSITE_HOSTNAME') -or
     $settings['Services__Enrollments__WriteScopes__0'] -ne $settings['Services__Enrollments__ReadScopes__0'] -or
     -not $settings.ContainsKey('Services__Enrollments__WriteScopes__1') -or
-    -not $settings.ContainsKey('AllowedHosts') -or
+    $settings['AllowedHosts'] -notlike '*defaultHostName*' -or
+    $settings['AZURE_CLIENT_ID'] -ne $settings['AzureAd__ClientCredentials__0__ManagedIdentityClientId'] -or
+    $settings['AZURE_CLIENT_ID'] -eq $settings['AzureAd__ClientId'] -or
     @($settings.Keys | Where-Object { $_ -match '(?i)secret|password|connectionstrings__' }).Count -ne 0) {
     throw 'Web identity, persistent key path, scopes or secretless configuration is incomplete.'
 }

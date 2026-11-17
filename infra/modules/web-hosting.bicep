@@ -27,7 +27,6 @@ param enrollmentsWriteScope string
 param tags object
 
 var appName = 'app-adlc-${suffix}-web'
-var appHostName = '${appName}.azurewebsites.net'
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: 'id-adlc-${suffix}-web'
@@ -71,28 +70,33 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
       ipSecurityRestrictionsDefaultAction: 'Allow'
       scmIpSecurityRestrictionsUseMain: false
       scmIpSecurityRestrictionsDefaultAction: 'Deny'
-      appSettings: [
-        { name: 'AzureAd__TenantId', value: tenant().tenantId }
-        { name: 'AzureAd__ClientId', value: webClientId }
-        { name: 'AzureAd__ClientCredentials__0__SourceType', value: 'SignedAssertionFromManagedIdentity' }
-        { name: 'AzureAd__ClientCredentials__0__ManagedIdentityClientId', value: identity.properties.clientId }
-        { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
-        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: telemetry.outputs.connectionString }
-        { name: 'Services__Students__BaseUrl', value: 'https://${studentsHost}/' }
-        { name: 'Services__Students__ReadScopes__0', value: studentsReadScope }
-        { name: 'Services__Academics__BaseUrl', value: 'https://${academicsHost}/' }
-        { name: 'Services__Academics__ReadScopes__0', value: academicsReadScope }
-        { name: 'Services__Enrollments__BaseUrl', value: 'https://${enrollmentsHost}/' }
-        { name: 'Services__Enrollments__ReadScopes__0', value: enrollmentsReadScope }
-        { name: 'Services__Enrollments__WriteScopes__0', value: enrollmentsReadScope }
-        { name: 'Services__Enrollments__WriteScopes__1', value: enrollmentsWriteScope }
-        { name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', value: 'true' }
-        { name: 'DataProtection__KeyPath', value: '/home/data-protection-keys' }
-        { name: 'AllowedHosts', value: appHostName }
-        { name: 'Hosting__AppServiceHttpsOnly', value: 'true' }
-        { name: 'ASPNETCORE_FORWARDEDHEADERS_ENABLED', value: 'false' }
-      ]
     }
+  }
+}
+
+resource appSettings 'Microsoft.Web/sites/config@2023-12-01' = {
+  parent: app
+  name: 'appsettings'
+  properties: {
+    AzureAd__TenantId: tenant().tenantId
+    AzureAd__ClientId: webClientId
+    AzureAd__ClientCredentials__0__SourceType: 'SignedAssertionFromManagedIdentity'
+    AzureAd__ClientCredentials__0__ManagedIdentityClientId: identity.properties.clientId
+    AZURE_CLIENT_ID: identity.properties.clientId
+    APPLICATIONINSIGHTS_CONNECTION_STRING: telemetry.outputs.connectionString
+    Services__Students__BaseUrl: 'https://${studentsHost}/'
+    Services__Students__ReadScopes__0: studentsReadScope
+    Services__Academics__BaseUrl: 'https://${academicsHost}/'
+    Services__Academics__ReadScopes__0: academicsReadScope
+    Services__Enrollments__BaseUrl: 'https://${enrollmentsHost}/'
+    Services__Enrollments__ReadScopes__0: enrollmentsReadScope
+    Services__Enrollments__WriteScopes__0: enrollmentsReadScope
+    Services__Enrollments__WriteScopes__1: enrollmentsWriteScope
+    WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'true'
+    DataProtection__KeyPath: '/home/data-protection-keys'
+    AllowedHosts: app.properties.defaultHostName
+    Hosting__AppServiceHttpsOnly: 'true'
+    ASPNETCORE_FORWARDEDHEADERS_ENABLED: 'false'
   }
 }
 
