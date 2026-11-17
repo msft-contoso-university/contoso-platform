@@ -60,7 +60,7 @@ retain their separate gates.
   orchestration, DNS, registry access and platform-managed group teardown
   remain unverified and incomplete.
 - [x] Public HTTPS Web hosting and private SCM templates for both stages
-  compile. App registration/federation, consent, trusted proxy handling,
+  compile. App registration/federation, consent, HTTPS-only boundary readback,
   persistent cookie keys and private SCM/backend connectivity remain
   unverified. The lifecycle remains blocked; public entry is not authorized
   until these boundaries are resolved.

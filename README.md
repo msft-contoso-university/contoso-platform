@@ -51,9 +51,11 @@ denied. Each Web app shares its stage's single-instance plan, uses a separate
 managed identity and persistent `/home` storage for its cookie keys, and
 receives delegated scope configuration rather than app-only API permissions.
 Web client registration, workload identity federation, user consent,
-trusted HTTPS proxy handling, persistent key isolation, SCM network access
+HTTPS-only platform readback, persistent key isolation, SCM network access
 and service-to-service DNS remain unverified. In particular, do not enable
-the public entrypoint before resolving its trusted forwarded-header boundary.
+the public entrypoint until the deployed Web version's App Service HTTPS-only
+contract, native hostname, HTTP redirect and exclusive worker ingress have
+been verified. No forwarded-header trust is configured.
 The Web template derives the Enrollments hostname from the environment domain;
 the release phase must compare it with the deployed app's actual ingress FQDN.
 This remains incomplete and
@@ -111,6 +113,13 @@ ZIP against an independently supplied source commit and approved SHA-256,
 including its embedded manifest and every file hash, without extraction. It
 does not determine approval, retrieve artifacts, deploy, or prove provenance.
 It is not yet integrated into the private transport or release lifecycle.
+
+`scripts\verify-oci-candidate.py` checks the Enrollments OCI archive and SQL
+migration against separately supplied approved SHA-256 values and the source
+commit. It verifies manifest/config/layer hashes and uncompressed layer DiffIDs
+without extracting the archive. Run it on a controlled, immutable artifact
+directory; it does not establish approval or provenance, retrieve, import or
+deploy the image, or prove that a registry preserved its digest.
 
 `scripts\stack-lock.py` implements an experimental GitHub-backed stack lock:
 create is atomic and release checks the owner's operation ID and current blob

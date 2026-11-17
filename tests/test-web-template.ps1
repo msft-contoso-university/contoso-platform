@@ -31,6 +31,9 @@ foreach ($setting in $site.properties.siteConfig.appSettings) { $settings[$setti
 if ($settings['AzureAd__ClientCredentials__0__SourceType'] -ne 'SignedAssertionFromManagedIdentity' -or
     $settings['WEBSITES_ENABLE_APP_SERVICE_STORAGE'] -ne 'true' -or
     $settings['DataProtection__KeyPath'] -ne '/home/data-protection-keys' -or
+    $settings['Hosting__AppServiceHttpsOnly'] -ne 'true' -or
+    $settings['ASPNETCORE_FORWARDEDHEADERS_ENABLED'] -ne 'false' -or
+    $settings.ContainsKey('WEBSITE_SITE_NAME') -or $settings.ContainsKey('WEBSITE_HOSTNAME') -or
     $settings['Services__Enrollments__WriteScopes__0'] -ne $settings['Services__Enrollments__ReadScopes__0'] -or
     -not $settings.ContainsKey('Services__Enrollments__WriteScopes__1') -or
     -not $settings.ContainsKey('AllowedHosts') -or

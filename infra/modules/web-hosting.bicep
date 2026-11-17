@@ -89,6 +89,8 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', value: 'true' }
         { name: 'DataProtection__KeyPath', value: '/home/data-protection-keys' }
         { name: 'AllowedHosts', value: appHostName }
+        { name: 'Hosting__AppServiceHttpsOnly', value: 'true' }
+        { name: 'ASPNETCORE_FORWARDEDHEADERS_ENABLED', value: 'false' }
       ]
     }
   }
