@@ -44,3 +44,4 @@ try {
     if ($createdFixture -and (Test-Path -LiteralPath $fixture)) { Remove-Item -LiteralPath $fixture }
     if ($createdMarker -and (Test-Path -LiteralPath $dirty)) { Remove-Item -LiteralPath $dirty }
 }
+exit 0
