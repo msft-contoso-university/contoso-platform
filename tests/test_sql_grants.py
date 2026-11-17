@@ -17,6 +17,10 @@ TARGET = {"database": "students", "runtime": "students-api", "migration": "stude
 
 
 class SqlGrantTests(unittest.TestCase):
+    def test_bundled_shell_script_has_linux_line_endings(self):
+        script = (PATH.parents[2] / "scripts" / "grant-sql-access.sh").read_bytes()
+        self.assertNotIn(b"\r\n", script)
+
     def test_requires_distinct_runtime_and_migration_identities(self):
         target = dict(TARGET, migration="STUDENTS-API")
         with self.assertRaisesRegex(ValueError, "distinct"):
