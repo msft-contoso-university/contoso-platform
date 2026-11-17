@@ -17,6 +17,16 @@ $sample = @{
     ADLC_DEV_ACADEMICS_AUDIENCE = 'api://dev-academics'
     ADLC_STAGING_STUDENTS_AUDIENCE = 'api://staging-students'
     ADLC_STAGING_ACADEMICS_AUDIENCE = 'api://staging-academics'
+    ADLC_DEV_WEB_CLIENT_ID = '11111111-1111-4111-8111-111111111111'
+    ADLC_DEV_STUDENTS_READ_SCOPE = 'api://dev-students/students.read'
+    ADLC_DEV_ACADEMICS_READ_SCOPE = 'api://dev-academics/academics.read'
+    ADLC_DEV_ENROLLMENTS_READ_SCOPE = 'api://dev-enrollments/enrollments.read'
+    ADLC_DEV_ENROLLMENTS_WRITE_SCOPE = 'api://dev-enrollments/enrollments.write'
+    ADLC_STAGING_WEB_CLIENT_ID = '22222222-2222-4222-8222-222222222222'
+    ADLC_STAGING_STUDENTS_READ_SCOPE = 'api://staging-students/students.read'
+    ADLC_STAGING_ACADEMICS_READ_SCOPE = 'api://staging-academics/academics.read'
+    ADLC_STAGING_ENROLLMENTS_READ_SCOPE = 'api://staging-enrollments/enrollments.read'
+    ADLC_STAGING_ENROLLMENTS_WRITE_SCOPE = 'api://staging-enrollments/enrollments.write'
     ADLC_RUNNER_HTTPS_EGRESS_PREFIXES = '["20.0.0.0/8"]'
     ADLC_DATABASE_SKU = '{"name":"Basic","tier":"Basic"}'
     ADLC_LOG_DAILY_QUOTA_GB = '1'
@@ -30,6 +40,10 @@ $parameters = ($output.parametersJson | ConvertFrom-Json).parameters
 if ($parameters.environmentName.value -ne 'ci-stack' -or
     $parameters.location.value -ne 'eastus2' -or
     $parameters.applicationSubnets.value.Count -ne 4 -or
+    $parameters.devWebClientId.value -ne $sample.ADLC_DEV_WEB_CLIENT_ID -or
+    $parameters.stagingWebClientId.value -ne $sample.ADLC_STAGING_WEB_CLIENT_ID -or
+    $parameters.devEnrollmentsWriteScope.value -ne $sample.ADLC_DEV_ENROLLMENTS_WRITE_SCOPE -or
+    $parameters.stagingEnrollmentsWriteScope.value -ne $sample.ADLC_STAGING_ENROLLMENTS_WRITE_SCOPE -or
     $parameters.runnerHttpsEgressPrefixes.value.Count -ne 1 -or
     $parameters.databaseSku.value.name -ne 'Basic' -or
     $parameters.dailyQuotaGb.value -ne 1) {

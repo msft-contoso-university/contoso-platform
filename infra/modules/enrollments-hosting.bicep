@@ -104,6 +104,7 @@ module dns './container-dns.bicep' = {
 }
 
 output environmentId string = environment.id
+output defaultDomain string = environment.properties.defaultDomain
 output infrastructureResourceGroup string = infrastructureResourceGroupName
 output runtimeIdentityName string = runtimeIdentity.name
 output runtimeIdentityResourceId string = runtimeIdentity.id

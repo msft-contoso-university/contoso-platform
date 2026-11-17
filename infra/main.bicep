@@ -33,6 +33,27 @@ param devAcademicsAudience string
 param stagingStudentsAudience string
 @minLength(1)
 param stagingAcademicsAudience string
+@description('Web confidential-client registration IDs and delegated API scopes for each stage.')
+@minLength(1)
+param devWebClientId string
+@minLength(1)
+param devStudentsReadScope string
+@minLength(1)
+param devAcademicsReadScope string
+@minLength(1)
+param devEnrollmentsReadScope string
+@minLength(1)
+param devEnrollmentsWriteScope string
+@minLength(1)
+param stagingWebClientId string
+@minLength(1)
+param stagingStudentsReadScope string
+@minLength(1)
+param stagingAcademicsReadScope string
+@minLength(1)
+param stagingEnrollmentsReadScope string
+@minLength(1)
+param stagingEnrollmentsWriteScope string
 
 @description('Verified explicit public CIDRs permitted for runner HTTPS egress.')
 @minLength(1)
@@ -204,6 +225,54 @@ module stagingEnrollments './modules/enrollments-hosting.bicep' = {
   }
 }
 
+module devWeb './modules/web-hosting.bicep' = {
+  name: 'adlc-dev-web'
+  scope: devGroup
+  params: {
+    suffix: '${suffix}-dev'
+    location: location
+    servicePlanId: devApis.outputs.servicePlanId
+    appSubnetId: '${shared.outputs.networkResourceId}/subnets/${devAppSubnetName}'
+    endpointSubnetId: shared.outputs.endpointSubnetResourceId
+    appServiceDnsZoneId: shared.outputs.appServicePrivateDnsZoneResourceId
+    insightsResourceGroup: sharedGroupName
+    insightsName: 'appi-adlc-${suffix}-dev'
+    webClientId: devWebClientId
+    studentsHost: devApis.outputs.studentsHostName
+    academicsHost: devApis.outputs.academicsHostName
+    enrollmentsHost: 'ca-adlc-${suffix}-dev-enrollments.${devEnrollments.outputs.defaultDomain}'
+    studentsReadScope: devStudentsReadScope
+    academicsReadScope: devAcademicsReadScope
+    enrollmentsReadScope: devEnrollmentsReadScope
+    enrollmentsWriteScope: devEnrollmentsWriteScope
+    tags: union(tags, { 'adlc-stage': 'dev' })
+  }
+}
+
+module stagingWeb './modules/web-hosting.bicep' = {
+  name: 'adlc-staging-web'
+  scope: stagingGroup
+  params: {
+    suffix: '${suffix}-staging'
+    location: location
+    servicePlanId: stagingApis.outputs.servicePlanId
+    appSubnetId: '${shared.outputs.networkResourceId}/subnets/${stagingAppSubnetName}'
+    endpointSubnetId: shared.outputs.endpointSubnetResourceId
+    appServiceDnsZoneId: shared.outputs.appServicePrivateDnsZoneResourceId
+    insightsResourceGroup: sharedGroupName
+    insightsName: 'appi-adlc-${suffix}-staging'
+    webClientId: stagingWebClientId
+    studentsReadScope: stagingStudentsReadScope
+    academicsReadScope: stagingAcademicsReadScope
+    enrollmentsReadScope: stagingEnrollmentsReadScope
+    enrollmentsWriteScope: stagingEnrollmentsWriteScope
+    studentsHost: stagingApis.outputs.studentsHostName
+    academicsHost: stagingApis.outputs.academicsHostName
+    enrollmentsHost: 'ca-adlc-${suffix}-staging-enrollments.${stagingEnrollments.outputs.defaultDomain}'
+    tags: union(tags, { 'adlc-stage': 'staging' })
+  }
+}
+
 output ADLC_STACK_NAME string = environmentName
 output ADLC_STACK_GENERATION string = generation
 output ADLC_SHARED_RESOURCE_GROUP string = sharedGroup.name
@@ -237,6 +306,11 @@ output ADLC_DEV_ENROLLMENTS_MIGRATION_IDENTITY_NAME string = devEnrollments.outp
 output ADLC_STAGING_ENROLLMENTS_IDENTITY_NAME string = stagingEnrollments.outputs.runtimeIdentityName
 output ADLC_STAGING_ENROLLMENTS_MIGRATION_IDENTITY_NAME string = stagingEnrollments.outputs.migrationIdentityName
 output ADLC_DEV_WORKLOADS object = {
+  webAppId: devWeb.outputs.appResourceId
+  webHost: devWeb.outputs.appHostName
+  webIdentityId: devWeb.outputs.identityResourceId
+  webPrincipalId: devWeb.outputs.identityPrincipalId
+  webIdentityClientId: devWeb.outputs.identityClientId
   studentsAppId: devApis.outputs.studentsAppId
   studentsHost: devApis.outputs.studentsHostName
   studentsPrincipalId: devApis.outputs.studentsIdentityPrincipalId
@@ -256,6 +330,11 @@ output ADLC_DEV_WORKLOADS object = {
   enrollmentsMigrationClientId: devEnrollments.outputs.migrationIdentityClientId
 }
 output ADLC_STAGING_WORKLOADS object = {
+  webAppId: stagingWeb.outputs.appResourceId
+  webHost: stagingWeb.outputs.appHostName
+  webIdentityId: stagingWeb.outputs.identityResourceId
+  webPrincipalId: stagingWeb.outputs.identityPrincipalId
+  webIdentityClientId: stagingWeb.outputs.identityClientId
   studentsAppId: stagingApis.outputs.studentsAppId
   studentsHost: stagingApis.outputs.studentsHostName
   studentsPrincipalId: stagingApis.outputs.studentsIdentityPrincipalId

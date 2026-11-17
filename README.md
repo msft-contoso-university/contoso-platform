@@ -28,7 +28,10 @@ stages. It requires `AZURE_ENV_NAME`, `AZURE_LOCATION`,
 `ADLC_DEV_CONTAINER_SUBNET_NAME`, `ADLC_STAGING_CONTAINER_SUBNET_NAME`,
 `ADLC_RUNNER_HTTPS_EGRESS_PREFIXES` (JSON array), `ADLC_DATABASE_SKU` (JSON
 object), and `ADLC_LOG_DAILY_QUOTA_GB` (integer), plus
-`ADLC_{DEV,STAGING}_{STUDENTS,ACADEMICS}_AUDIENCE`. There are no target or
+`ADLC_{DEV,STAGING}_{STUDENTS,ACADEMICS}_AUDIENCE`,
+`ADLC_{DEV,STAGING}_WEB_CLIENT_ID`, and
+`ADLC_{DEV,STAGING}_{STUDENTS,ACADEMICS,ENROLLMENTS}_READ_SCOPE` and
+`ADLC_{DEV,STAGING}_ENROLLMENTS_WRITE_SCOPE`. There are no target or
 region defaults. These parameters are an incomplete interface, not permission
 to provision; additional inputs and validation are still required. A missing
 environment variable can compile to an empty string on Windows, so a future
@@ -42,7 +45,18 @@ identity and storage account. It also composes a private Premium registry,
 shared Log Analytics workspace, and separate dev/staging Application Insights
 resources. A separate awaited probe checks private DNS and TCP/TLS connectivity.
 The subscription-scope template composes these resources and private Students
-and Academics App Services for both stages. This remains incomplete and
+and Academics App Services for both stages. It also defines a public HTTPS
+Web app per stage with a private deployment endpoint and public SCM access
+denied. Each Web app shares its stage's single-instance plan, uses a separate
+managed identity and persistent `/home` storage for its cookie keys, and
+receives delegated scope configuration rather than app-only API permissions.
+Web client registration, workload identity federation, user consent,
+trusted HTTPS proxy handling, persistent key isolation, SCM network access
+and service-to-service DNS remain unverified. In particular, do not enable
+the public entrypoint before resolving its trusted forwarded-header boundary.
+The Web template derives the Enrollments hostname from the environment domain;
+the release phase must compare it with the deployed app's actual ingress FQDN.
+This remains incomplete and
 unvalidated in Azure; it does not deploy packages or establish runner
 connectivity. Do not deploy individual modules as a substitute for the stack.
 The same template provisions internal Container Apps environments and records

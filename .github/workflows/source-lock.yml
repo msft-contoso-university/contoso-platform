@@ -28,6 +28,9 @@ jobs:
       - name: Verify compiled private API security properties
         shell: pwsh
         run: ./tests/test-private-api-template.ps1
+      - name: Verify compiled Web hosting security properties
+        shell: pwsh
+        run: ./tests/test-web-template.ps1
       - name: Verify azd parameter bindings
         shell: pwsh
         run: ./tests/test-main-parameters.ps1

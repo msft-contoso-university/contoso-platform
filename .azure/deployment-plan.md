@@ -59,6 +59,11 @@ retain their separate gates.
   compile, with private DNS and managed identities. Image build/push, release
   orchestration, DNS, registry access and platform-managed group teardown
   remain unverified and incomplete.
+- [x] Public HTTPS Web hosting and private SCM templates for both stages
+  compile. App registration/federation, consent, trusted proxy handling,
+  persistent cookie keys and private SCM/backend connectivity remain
+  unverified. The lifecycle remains blocked; public entry is not authorized
+  until these boundaries are resolved.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
   azd lifecycle; no remote execution or resource provisioning has occurred.
