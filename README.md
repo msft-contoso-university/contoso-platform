@@ -92,6 +92,12 @@ SQL principal discovery permissions, migration identities, migrations, and
 Azure execution itself are not yet complete. The copied SQL grant scripts must not be run directly
 from an ordinary workstation against a private endpoint.
 
+`scripts\verify-candidate.py` checks a Web, Students, or Academics candidate
+ZIP against an independently supplied source commit and approved SHA-256,
+including its embedded manifest and every file hash, without extraction. It
+does not determine approval, retrieve artifacts, deploy, or prove provenance.
+It is not yet integrated into the private transport or release lifecycle.
+
 `scripts\stack-lock.py` implements an experimental GitHub-backed stack lock:
 create is atomic and release checks the owner's operation ID and current blob
 SHA. All generations of the same tenant/subscription/environment share a lock.
