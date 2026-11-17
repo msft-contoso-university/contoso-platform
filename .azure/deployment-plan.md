@@ -46,9 +46,11 @@ retain their separate gates.
   compile. Telemetry identity and networked image deployment remain unverified.
 - [x] Entra-only private SQL and in-VNet grant modules compile; grant tooling
   and role separation have local tests. SQL principal discovery permissions,
-  SID binding against Azure SQL, workload-to-identity attachment checks, azd
-  hook, migration, and actual in-network execution remain unverified. The
-  grant hook derives identity names from stack outputs but remains blocked.
+  SID binding against Azure SQL, azd hook, migration, and actual in-network
+  execution remain unverified. The blocked grant hook derives identity names
+  from stack outputs and verifies workload attachment and internal Container
+  Apps environment metadata. Enrollments app IDs must come from the later
+  image-release phase; that phase and hook ordering are not yet integrated.
 - [x] Dev and staging private Students and Academics App Service definitions
   compile, including private endpoints, managed identities, Entra-only SQL
   connection strings and resource-scoped telemetry roles. Workload deployment,

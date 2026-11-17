@@ -20,6 +20,12 @@ foreach ($stage in @('DEV', 'STAGING')) {
     $global:testValues["ADLC_${stage}_SQL_BOOTSTRAP_IDENTITY_ID"] = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.ManagedIdentity/userAssignedIdentities/bootstrap"
     $global:testValues["ADLC_${stage}_SQL_BOOTSTRAP_CLIENT_ID"] = '33333333-3333-4333-8333-333333333333'
     $global:testValues["ADLC_${stage}_SQL_SERVER_NAME"] = "sql-$($stage.ToLowerInvariant())"
+    $global:testValues["ADLC_${stage}_WORKLOADS"] = @{
+        studentsAppId = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.Web/sites/students-app"
+        academicsAppId = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.Web/sites/academics-app"
+        enrollmentsEnvironmentId = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.App/managedEnvironments/environment"
+    } | ConvertTo-Json -Compress
+    $global:testValues["ADLC_${stage}_ENROLLMENTS_APP_ID"] = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.App/containerApps/enrollments-app"
     foreach ($service in @('STUDENTS', 'ACADEMICS', 'ENROLLMENTS')) {
         $global:testValues["ADLC_${stage}_${service}_IDENTITY_NAME"] = "$($service.ToLowerInvariant())-api"
         $global:testValues["ADLC_${stage}_${service}_MIGRATION_IDENTITY_NAME"] = "$($service.ToLowerInvariant())-migration"
@@ -28,6 +34,9 @@ foreach ($stage in @('DEV', 'STAGING')) {
 $global:testDeployments = @()
 $global:testBadTenant = $false
 $global:testBadIdentity = $false
+$global:testBadAttachment = $false
+$global:testBadEnvironment = $false
+$global:testPublicEnvironment = $false
 
 function global:azd {
     $global:LASTEXITCODE = 0
@@ -66,6 +75,35 @@ function global:az {
             principalId = '44444444-4444-4444-8444-444444444444'
             tags = @{ 'adlc-stack' = 'demo'; 'adlc-generation' = $generation; 'adlc-stage' = $stage }
         } | ConvertTo-Json -Compress)
+    }
+    if ($args[0] -eq 'resource') {
+        $id = [string] $args[([array]::IndexOf($args, '--ids') + 1)]
+        $parts = $id -split '/'
+        $group = $parts[4]
+        $stage = $group.Substring('adlc-'.Length)
+        $service = $parts[-1].Replace('-app', '')
+        $provider = "$($parts[-3])/$($parts[-2])"
+        if ($provider -ieq 'Microsoft.App/managedEnvironments') {
+            return (@{
+                id = $id; type = $provider
+                tags = @{ 'adlc-stack' = 'demo'; 'adlc-generation' = 'one'; 'adlc-stage' = $stage }
+                properties = @{ vnetConfiguration = @{ internal = -not ($global:testPublicEnvironment -and $stage -eq 'staging') } }
+            } | ConvertTo-Json -Compress -Depth 10)
+        }
+        $identityName = if ($global:testBadAttachment -and $stage -eq 'staging' -and $service -eq 'students') {
+            'other-identity'
+        } else { "$service-api" }
+        $identityId = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$identityName"
+        $environment = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.App/managedEnvironments/environment"
+        if ($global:testBadEnvironment -and $stage -eq 'staging' -and $service -eq 'enrollments') {
+            $environment += '-other'
+        }
+        return (@{
+            id = $id; type = $provider
+            tags = @{ 'adlc-stack' = 'demo'; 'adlc-generation' = 'one'; 'adlc-stage' = $stage }
+            identity = @{ type = 'UserAssigned'; userAssignedIdentities = @{ $identityId = @{} } }
+            properties = @{ managedEnvironmentId = $environment }
+        } | ConvertTo-Json -Compress -Depth 10)
     }
     if ($args[0] -eq 'deployment') {
         $file = [string] $args[([array]::IndexOf($args, '--parameters') + 1)]
@@ -115,6 +153,48 @@ try {
         $refused = $true
     }
     if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Unowned staging identity was not rejected before dev deployment.' }
+    $global:testBadIdentity = $false
+    $global:testBadAttachment = $true
+    $refused = $false
+    try {
+        & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
+    } catch {
+        if ($_.Exception.Message -notmatch 'runtime identity attached') { throw }
+        $refused = $true
+    }
+    if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Wrong workload identity attachment was not rejected before deployment.' }
+    $global:testBadAttachment = $false
+    $global:testBadEnvironment = $true
+    $refused = $false
+    try {
+        & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
+    } catch {
+        if ($_.Exception.Message -notmatch 'expected internal environment') { throw }
+        $refused = $true
+    }
+    if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Wrong Enrollments environment was not rejected before deployment.' }
+    $global:testBadEnvironment = $false
+    $global:testPublicEnvironment = $true
+    $refused = $false
+    try {
+        & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
+    } catch {
+        if ($_.Exception.Message -notmatch 'not stack-owned and internal') { throw }
+        $refused = $true
+    }
+    if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Public Enrollments environment was not rejected before deployment.' }
+    $global:testPublicEnvironment = $false
+    $enrollmentsAppId = $global:testValues.ADLC_STAGING_ENROLLMENTS_APP_ID
+    $global:testValues.Remove('ADLC_STAGING_ENROLLMENTS_APP_ID')
+    $refused = $false
+    try {
+        & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
+    } catch {
+        if ($_.Exception.Message -notmatch 'Missing required azd environment value: ADLC_STAGING_ENROLLMENTS_APP_ID') { throw }
+        $refused = $true
+    }
+    if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Missing staged workload was not rejected before deployment.' }
+    $global:testValues.ADLC_STAGING_ENROLLMENTS_APP_ID = $enrollmentsAppId
     Write-Output 'Private SQL grant orchestration tests passed.'
 } finally {
     Remove-Item Function:\azd, Function:\az -ErrorAction SilentlyContinue
