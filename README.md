@@ -18,6 +18,21 @@ only, and the students main branch contains characterization tests only.
 `pwsh -File scripts\materialize-sources.ps1 -ValidateOnly` checks lock structure
 without network access; it does not verify release readiness or deploy anything.
 
+## Stack inputs
+
+`infra/main.bicepparam` binds one azd environment to the shared stack and both
+stages. It requires `AZURE_ENV_NAME`, `AZURE_LOCATION`,
+`ADLC_STACK_GENERATION`, `ADLC_VNET_PREFIX`, `ADLC_RUNNER_SUBNET_PREFIX`,
+`ADLC_ENDPOINT_SUBNET_PREFIX`, `ADLC_APPLICATION_SUBNETS` (JSON array),
+`ADLC_DEV_APP_SUBNET_NAME`, `ADLC_STAGING_APP_SUBNET_NAME`,
+`ADLC_RUNNER_HTTPS_EGRESS_PREFIXES` (JSON array), `ADLC_DATABASE_SKU` (JSON
+object), and `ADLC_LOG_DAILY_QUOTA_GB` (integer), plus
+`ADLC_{DEV,STAGING}_{STUDENTS,ACADEMICS}_AUDIENCE`. There are no target or
+region defaults. These parameters are an incomplete interface, not permission
+to provision; additional inputs and validation are still required. A missing
+environment variable can compile to an empty string on Windows, so a future
+lifecycle preflight must reject empty values before any deployment.
+
 ## Private execution foundation (incomplete)
 
 The shared foundation Bicep composes one VNet, a delegated ACI runner subnet,

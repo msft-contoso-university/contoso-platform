@@ -1,12 +1,15 @@
 targetScope = 'subscription'
 
 @description('The single azd environment name for this disposable stack.')
+@minLength(1)
 param environmentName string
 
 @description('An explicit stack generation identifier; never reuse an unrelated stack.')
+@minLength(1)
 param generation string
 
 @description('The explicitly selected Azure region.')
+@minLength(1)
 param location string
 
 @description('Shared VNet address space and non-overlapping subnet prefixes.')

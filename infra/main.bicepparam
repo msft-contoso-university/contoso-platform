@@ -1,0 +1,18 @@
+using './main.bicep'
+
+param environmentName = readEnvironmentVariable('AZURE_ENV_NAME')
+param generation = readEnvironmentVariable('ADLC_STACK_GENERATION')
+param location = readEnvironmentVariable('AZURE_LOCATION')
+param addressPrefix = readEnvironmentVariable('ADLC_VNET_PREFIX')
+param runnerSubnetPrefix = readEnvironmentVariable('ADLC_RUNNER_SUBNET_PREFIX')
+param endpointSubnetPrefix = readEnvironmentVariable('ADLC_ENDPOINT_SUBNET_PREFIX')
+param applicationSubnets = json(readEnvironmentVariable('ADLC_APPLICATION_SUBNETS'))
+param devAppSubnetName = readEnvironmentVariable('ADLC_DEV_APP_SUBNET_NAME')
+param stagingAppSubnetName = readEnvironmentVariable('ADLC_STAGING_APP_SUBNET_NAME')
+param devStudentsAudience = readEnvironmentVariable('ADLC_DEV_STUDENTS_AUDIENCE')
+param devAcademicsAudience = readEnvironmentVariable('ADLC_DEV_ACADEMICS_AUDIENCE')
+param stagingStudentsAudience = readEnvironmentVariable('ADLC_STAGING_STUDENTS_AUDIENCE')
+param stagingAcademicsAudience = readEnvironmentVariable('ADLC_STAGING_ACADEMICS_AUDIENCE')
+param runnerHttpsEgressPrefixes = json(readEnvironmentVariable('ADLC_RUNNER_HTTPS_EGRESS_PREFIXES'))
+param databaseSku = json(readEnvironmentVariable('ADLC_DATABASE_SKU'))
+param dailyQuotaGb = int(readEnvironmentVariable('ADLC_LOG_DAILY_QUOTA_GB'))
