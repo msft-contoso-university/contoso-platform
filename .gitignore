@@ -1,0 +1,3 @@
+.azure/*
+!.azure/deployment-plan.md
+.sources/
