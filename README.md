@@ -133,3 +133,10 @@ fresh operation ID only to the child process and retains the lock on failure.
 It cannot run via its CLI, does not integrate hook verification, and blocks
 destroy entirely. It does not satisfy the required direct `azd up` and
 confirmed `azd down` lifecycle.
+
+`scripts\get-azd-ancestor.ps1` is a read-only native-hook identity spike: it
+finds a matching live azd ancestor and returns its PID and creation identity,
+or fails closed. It creates no nonce, grants no lock ownership, and is not
+wired into the lifecycle. Independent `azd hooks run` tests do not establish
+real `up`/`down` hook ordering, crash recovery, security of a nonce store, or
+cross-host process identity. All lifecycle guards remain in place.
