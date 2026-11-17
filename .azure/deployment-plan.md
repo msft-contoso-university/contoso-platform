@@ -69,7 +69,14 @@ retain their separate gates.
   azd lifecycle; no remote execution or resource provisioning has occurred.
 - [ ] Integrate stack-wide locking with the canonical azd entrypoint, explicit
   destroy confirmation and recovery; the process-nonce wrapper is disabled
-  and is not a substitute for direct azd lifecycle behavior.
+  and is not a substitute for direct azd lifecycle behavior. Experimental
+  action-bound native owner-file and GitHub CAS-lock functions are not wired
+  into lifecycle hooks. Their private file is the local capability; the random
+  nonce is not sent to GitHub and is not an independent hook authentication
+  mechanism. Same-account compromise and ancestor-path replacement are outside
+  the demonstrated boundary. Native up/down ordering, trusted invocation
+  context, credential provisioning, interruption recovery and safe release
+  remain unproven; no real lock state has been created.
 - [ ] Implement workload, platform, integration and deterministic checks.
 - [ ] Select region and establish resource inventory, quotas and capacity.
 - [ ] Complete identity, GitHub, SRE and consent prerequisites.
