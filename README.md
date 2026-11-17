@@ -48,6 +48,14 @@ Application Insights local authentication is disabled: workloads need managed
 identity-based telemetry authentication and a scoped ingestion role. Neither
 the role wiring nor end-to-end telemetry has been implemented yet.
 
+The SQL modules define private, Entra-only servers and one database per service.
+Each environment has a separate bootstrap identity; the private grant script
+assigns runtime identities read/write access and grants DDL only to distinct
+migration identities. SQL principal discovery permissions, the azd hook,
+application identity wiring, migrations, and the Azure execution itself are
+not yet complete. The copied Azure SQL grant scripts must not be run directly
+from an ordinary workstation against a private endpoint.
+
 `scripts\stack-lock.py` implements an experimental GitHub-backed stack lock:
 create is atomic and release checks the owner's operation ID and current blob
 SHA. All generations of the same tenant/subscription/environment share a lock.

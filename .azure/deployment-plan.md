@@ -44,6 +44,9 @@ retain their separate gates.
   Their security, egress, readiness and actual connectivity remain unverified.
 - [x] Shared registry, workspace and dev/staging Application Insights modules
   compile. Telemetry identity and networked image deployment remain unverified.
+- [x] Entra-only private SQL and in-VNet grant modules compile; grant tooling
+  and role separation have local tests. SQL principal discovery permissions,
+  azd hook, migration, and actual in-network execution remain unverified.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
   azd lifecycle; no remote execution or resource provisioning has occurred.
