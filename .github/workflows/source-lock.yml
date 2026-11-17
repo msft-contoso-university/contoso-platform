@@ -18,8 +18,11 @@ jobs:
       - name: Validate source materialization
         shell: pwsh
         run: ./tests/test-materialize-sources.ps1
-      - name: Test private endpoint probe
+      - name: Test lifecycle safeguards and infrastructure helpers
         run: python3 -B -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Test private SQL grant orchestration
+        shell: pwsh
+        run: ./tests/test-invoke-private-sql-grants.ps1
       - name: Compile private endpoint probe
         run: |
           az bicep install --version v0.41.2
@@ -31,3 +34,4 @@ jobs:
           az bicep build --file infra/modules/shared-network.bicep --stdout > /dev/null
           az bicep build --file infra/modules/shared-observability-registry.bicep --stdout > /dev/null
           az bicep build --file infra/modules/shared-foundation.bicep --stdout > /dev/null
+          az bicep build --file infra/main.bicep --stdout > /dev/null

@@ -1,0 +1,26 @@
+name: contoso-platform
+
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+requiredVersions:
+  azd: '>=1.38.0 <2.0.0'
+
+hooks:
+  preup:
+    shell: pwsh
+    run: ./scripts/guard-incomplete.ps1
+  preprovision:
+    shell: pwsh
+    run: ./scripts/guard-incomplete.ps1
+  predeploy:
+    shell: pwsh
+    run: ./scripts/guard-incomplete.ps1
+  predown:
+    shell: pwsh
+    run: ./scripts/guard-incomplete.ps1
+  postprovision:
+    shell: pwsh
+    run: ./scripts/invoke-private-sql-grants.ps1

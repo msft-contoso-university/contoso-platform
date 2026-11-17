@@ -1,8 +1,9 @@
 # contoso-platform
 Reproducible Azure ADLC demo lifecycle with azd, Bicep, GitHub agents and SRE
 
-**Not deployable yet.** The canonical azd entrypoint, private deployment
-execution, infrastructure, integrations and teardown remain unimplemented.
+**Not deployable yet.** The azd entrypoint is deliberately fail-closed:
+`up`, `provision`, `deploy`, and `down` are blocked while private deployment,
+workload infrastructure, integrations, and teardown remain incomplete.
 
 ## Locked source bootstrap
 
