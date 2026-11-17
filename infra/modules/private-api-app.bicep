@@ -13,6 +13,7 @@ param endpointSubnetId string
 param appServiceDnsZoneId string
 param insightsResourceGroup string
 param insightsName string
+param executionStorageName string
 param sqlServerName string
 @minLength(1)
 param apiAudience string
@@ -25,6 +26,21 @@ resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' 
   name: identityName
   location: location
   tags: tags
+}
+
+resource migrationIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${identityName}-migration'
+  location: location
+  tags: tags
+}
+
+module migrationStorageAccess './execution-storage-access.bicep' = {
+  name: '${appName}-migration-storage'
+  scope: resourceGroup(insightsResourceGroup)
+  params: {
+    storageAccountName: executionStorageName
+    principalId: migrationIdentity.properties.principalId
+  }
 }
 
 module telemetry './telemetry-access.bicep' = {
@@ -142,3 +158,7 @@ output appHostName string = app.properties.defaultHostName
 output runtimeIdentityName string = identity.name
 output runtimeIdentityPrincipalId string = identity.properties.principalId
 output runtimeIdentityClientId string = identity.properties.clientId
+output migrationIdentityName string = migrationIdentity.name
+output migrationIdentityResourceId string = migrationIdentity.id
+output migrationIdentityClientId string = migrationIdentity.properties.clientId
+output migrationStorageRoleId string = migrationStorageAccess.outputs.roleAssignmentResourceId

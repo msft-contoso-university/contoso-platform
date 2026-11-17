@@ -7,6 +7,12 @@ $template = ($json | Out-String) | ConvertFrom-Json
 $sites = @($template.resources | Where-Object type -eq 'Microsoft.Web/sites')
 if ($sites.Count -ne 1) { throw 'Expected exactly one App Service.' }
 $site = $sites[0]
+$identities = @($template.resources | Where-Object type -eq 'Microsoft.ManagedIdentity/userAssignedIdentities')
+if ($identities.Count -ne 2 -or @($identities | Where-Object { $_.name -like '*migration*' }).Count -ne 1 -or
+    @($site.identity.userAssignedIdentities.PSObject.Properties).Count -ne 1 -or
+    @($site.identity.userAssignedIdentities.PSObject.Properties | Where-Object { $_.Name -like '*migration*' }).Count -ne 0) {
+    throw 'Runtime and migration identities must be distinct; only runtime may be attached to the API.'
+}
 if ($site.identity.type -ne 'UserAssigned' -or
     -not $site.properties.httpsOnly -or
     $site.properties.publicNetworkAccess -ne 'Disabled' -or

@@ -7,6 +7,7 @@ param endpointSubnetId string
 param appServiceDnsZoneId string
 param insightsResourceGroup string
 param insightsName string
+param executionStorageName string
 param sqlServerName string
 param studentsAudience string
 param academicsAudience string
@@ -39,6 +40,7 @@ module students './private-api-app.bicep' = {
     appServiceDnsZoneId: appServiceDnsZoneId
     insightsResourceGroup: insightsResourceGroup
     insightsName: insightsName
+    executionStorageName: executionStorageName
     sqlServerName: sqlServerName
     apiAudience: studentsAudience
     tags: tags
@@ -57,6 +59,7 @@ module academics './private-api-app.bicep' = {
     appServiceDnsZoneId: appServiceDnsZoneId
     insightsResourceGroup: insightsResourceGroup
     insightsName: insightsName
+    executionStorageName: executionStorageName
     sqlServerName: sqlServerName
     apiAudience: academicsAudience
     tags: tags
@@ -68,7 +71,13 @@ output studentsAppId string = students.outputs.appResourceId
 output studentsHostName string = students.outputs.appHostName
 output studentsIdentityName string = students.outputs.runtimeIdentityName
 output studentsIdentityPrincipalId string = students.outputs.runtimeIdentityPrincipalId
+output studentsMigrationIdentityName string = students.outputs.migrationIdentityName
+output studentsMigrationIdentityResourceId string = students.outputs.migrationIdentityResourceId
+output studentsMigrationIdentityClientId string = students.outputs.migrationIdentityClientId
 output academicsAppId string = academics.outputs.appResourceId
 output academicsHostName string = academics.outputs.appHostName
 output academicsIdentityName string = academics.outputs.runtimeIdentityName
 output academicsIdentityPrincipalId string = academics.outputs.runtimeIdentityPrincipalId
+output academicsMigrationIdentityName string = academics.outputs.migrationIdentityName
+output academicsMigrationIdentityResourceId string = academics.outputs.migrationIdentityResourceId
+output academicsMigrationIdentityClientId string = academics.outputs.migrationIdentityClientId
