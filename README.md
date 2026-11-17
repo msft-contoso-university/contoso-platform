@@ -76,10 +76,12 @@ role assignment nor end-to-end telemetry has been exercised in Azure.
 The SQL modules define private, Entra-only servers and one database per service.
 Each environment has a separate bootstrap identity; the private grant script
 is intended to assign runtime identities read/write access and grant DDL only to distinct
-migration identities. Private API hosting defines separate migration identities
-and scoped execution-storage access for Students and Academics; Enrollments
-identity and migration execution are not yet wired. The azd hook awaits private grant deployments and checks
-both stages' ownership and inputs, but is additionally blocked because the
+migration identities. Each service has a separate migration identity and
+scoped execution-storage access; migration execution is not yet wired. The
+blocked grant hook verifies ownership, runtime-identity attachments, and the
+internal Enrollments environment for both stages. It needs the Enrollments app
+IDs from the later image-release phase; that release and the required hook
+reordering are not yet implemented. It is additionally blocked because the
 copied Azure grant script does not verify an existing database principal's SID
 against the managed identity client ID. Its proposed replacement generates a
 transactional, exact-client-ID SID check and grants; it has only been unit-tested,
