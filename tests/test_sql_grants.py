@@ -15,7 +15,13 @@ spec = importlib.util.spec_from_file_location("sql_grants", PATH)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 CLIENT = "11111111-1111-4111-8111-111111111111"
-TARGET = {"database": "students", "runtime": "students-api", "migration": "students-migration"}
+TARGET = {
+    "database": "students",
+    "runtime": "students-api",
+    "runtimeClientId": "00112233-4455-6677-8899-aabbccddeeff",
+    "migration": "students-migration",
+    "migrationClientId": "01234567-89ab-cdef-0123-456789abcdef",
+}
 
 
 class SqlGrantTests(unittest.TestCase):
@@ -38,25 +44,37 @@ class SqlGrantTests(unittest.TestCase):
             with self.subTest(target=target), self.assertRaises(ValueError):
                 module.validate("school-sql", CLIENT, [target])
 
+    def test_rejects_reused_or_invalid_client_ids(self):
+        for value in (TARGET["runtimeClientId"], CLIENT, "00000000-0000-0000-0000-000000000000", "not-a-guid"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                module.validate("school-sql", CLIENT, [dict(TARGET, migrationClientId=value)])
+        other = dict(TARGET, database="academics", runtime="academics-api", migration="academics-migration")
+        with self.assertRaisesRegex(ValueError, "distinct"):
+            module.validate("school-sql", CLIENT, [TARGET, other])
+
     def test_runtime_never_gets_ddl_and_migration_uses_separate_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "output.json"
             with patch.object(module, "install_binary"), patch.object(module.subprocess, "run") as process:
-                module.run("school-sql", CLIENT, [TARGET], b"grant script", str(output))
-            commands = [call.args[0] for call in process.call_args_list]
-            self.assertIn("SERVICE_API_NAME=students-api", commands[1])
-            self.assertIn("SQL_GRANT_DDLADMIN=false", commands[1])
-            self.assertIn("SERVICE_API_NAME=students-migration", commands[3])
-            self.assertIn("SQL_GRANT_DDLADMIN=true", commands[3])
+                module.run("school-sql", CLIENT, [TARGET], str(output))
+            command = process.call_args.args[0]
+            query = command[command.index("-Q") + 1]
+            self.assertIn("CREATE USER [students-api] WITH SID = 0x33221100554477668899aabbccddeeff, TYPE = E", query)
+            self.assertIn("CREATE USER [students-migration] WITH SID = 0x67452301ab89efcd0123456789abcdef, TYPE = E", query)
+            self.assertIn("Existing SQL principal does not match", query)
+            self.assertIn("Runtime identity has unexpected explicit", query)
+            self.assertNotIn("ALTER ROLE [db_ddladmin] ADD MEMBER [students-api]", query)
+            self.assertIn("ALTER ROLE [db_ddladmin] ADD MEMBER [students-migration]", query)
+            self.assertIn("-b", command)
             self.assertEqual(json.loads(output.read_text())["result"], "granted")
 
     def test_failed_grant_does_not_write_success(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "output.json"
             with patch.object(module, "install_binary"), \
-                 patch.object(module.subprocess, "run", side_effect=module.subprocess.CalledProcessError(1, "azd")):
+                 patch.object(module.subprocess, "run", side_effect=module.subprocess.CalledProcessError(1, "sqlcmd")):
                 with self.assertRaises(module.subprocess.CalledProcessError):
-                    module.run("school-sql", CLIENT, [TARGET], b"grant script", str(output))
+                    module.run("school-sql", CLIENT, [TARGET], str(output))
             self.assertFalse(output.exists())
 
     def test_binary_download_checks_digest_before_extracting(self):

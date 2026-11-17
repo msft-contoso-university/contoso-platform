@@ -126,8 +126,14 @@ foreach ($stage in @('DEV', 'STAGING')) {
         if ($target.runtime -cne $expectedRuntime -or $target.migration -cne $expectedMigration) {
             throw "Grant identities for $service do not match the $stage stack outputs."
         }
-        $null = Assert-StackIdentity $target.runtime $group $stage
-        $null = Assert-StackIdentity $target.migration $group $stage
+        $runtimeInfo = Assert-StackIdentity $target.runtime $group $stage
+        $migrationInfo = Assert-StackIdentity $target.migration $group $stage
+        if ($runtimeInfo.clientId -eq $migrationInfo.clientId -or
+            $runtimeInfo.clientId -eq $client -or $migrationInfo.clientId -eq $client) {
+            throw "Bootstrap, runtime, and migration client IDs must be distinct for $stage."
+        }
+        $target.runtimeClientId = $runtimeInfo.clientId
+        $target.migrationClientId = $migrationInfo.clientId
     }
     $plans += @{
         stage = $stage; group = $group; identity = $identity

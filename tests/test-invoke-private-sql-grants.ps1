@@ -56,9 +56,19 @@ function global:az {
         $group = [string] $args[([array]::IndexOf($args, '--resource-group') + 1)]
         $stage = $group.Substring('adlc-'.Length)
         $generation = if ($global:testBadIdentity -and $stage -eq 'staging') { 'other' } else { 'one' }
+        $client = switch ($name) {
+            'bootstrap' { '33333333-3333-4333-8333-333333333333' }
+            'students-api' { 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }
+            'students-migration' { 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }
+            'academics-api' { 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' }
+            'academics-migration' { 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' }
+            'enrollments-api' { 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee' }
+            'enrollments-migration' { 'ffffffff-ffff-4fff-8fff-ffffffffffff' }
+            default { throw 'Unexpected test identity.' }
+        }
         return (@{
             id = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$name"
-            clientId = '33333333-3333-4333-8333-333333333333'
+            clientId = $client
             principalId = '44444444-4444-4444-8444-444444444444'
             tags = @{ 'adlc-stack' = 'demo'; 'adlc-generation' = $generation; 'adlc-stage' = $stage }
         } | ConvertTo-Json -Compress)

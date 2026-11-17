@@ -8,7 +8,7 @@ param storageAccountResourceId string
 param runnerSubnetResourceId string
 param sqlServerName string
 
-@description('Entries with database, runtime identity name and distinct migration identity name.')
+@description('Entries with database, runtime and migration identity names and client IDs.')
 @minLength(1)
 @maxLength(3)
 param targets array
@@ -42,10 +42,6 @@ module grants 'br/public:avm/res/resources/deployment-script:0.5.2' = {
       {
         name: 'GRANT_TARGETS'
         value: string(targets)
-      }
-      {
-        name: 'GRANT_SCRIPT'
-        value: base64(loadTextContent('../../scripts/grant-sql-access.sh'))
       }
     ]
     scriptContent: concat('set -eu\npython3 - <<\'PY\'\n', loadTextContent('sql-grants.py'), '\nPY\n')
