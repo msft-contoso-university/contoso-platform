@@ -7,6 +7,11 @@ param natGatewayName string
 param natPublicIpName string
 param storageAccountName string
 param identityName string
+param workspaceName string
+param devInsightsName string
+param stagingInsightsName string
+param registryName string
+param dailyQuotaGb int
 param addressPrefix string
 param runnerSubnetPrefix string
 param endpointSubnetPrefix string
@@ -45,6 +50,21 @@ module execution './private-execution-storage.bicep' = {
   }
 }
 
+module sharedServices './shared-observability-registry.bicep' = {
+  name: 'shared-observability-registry'
+  params: {
+    location: location
+    workspaceName: workspaceName
+    devInsightsName: devInsightsName
+    stagingInsightsName: stagingInsightsName
+    registryName: registryName
+    dailyQuotaGb: dailyQuotaGb
+    endpointSubnetResourceId: network.outputs.endpointSubnetResourceId
+    registryPrivateDnsZoneResourceId: network.outputs.registryPrivateDnsZoneResourceId
+    tags: tags
+  }
+}
+
 output networkResourceId string = network.outputs.networkResourceId
 output runnerSubnetResourceId string = network.outputs.runnerSubnetResourceId
 output endpointSubnetResourceId string = network.outputs.endpointSubnetResourceId
@@ -54,3 +74,8 @@ output appServicePrivateDnsZoneResourceId string = network.outputs.appServicePri
 output registryPrivateDnsZoneResourceId string = network.outputs.registryPrivateDnsZoneResourceId
 output executionIdentityResourceId string = execution.outputs.identityResourceId
 output executionStorageAccountResourceId string = execution.outputs.storageAccountResourceId
+output workspaceResourceId string = sharedServices.outputs.workspaceResourceId
+output devInsightsResourceId string = sharedServices.outputs.devInsightsResourceId
+output stagingInsightsResourceId string = sharedServices.outputs.stagingInsightsResourceId
+output registryResourceId string = sharedServices.outputs.registryResourceId
+output registryLoginServer string = sharedServices.outputs.registryLoginServer

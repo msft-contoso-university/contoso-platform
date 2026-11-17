@@ -26,4 +26,5 @@ jobs:
           az bicep build --file infra/modules/private-probe.bicep --stdout > /dev/null
           az bicep build --file infra/modules/private-execution-storage.bicep --stdout > /dev/null
           az bicep build --file infra/modules/shared-network.bicep --stdout > /dev/null
+          az bicep build --file infra/modules/shared-observability-registry.bicep --stdout > /dev/null
           az bicep build --file infra/modules/shared-foundation.bicep --stdout > /dev/null

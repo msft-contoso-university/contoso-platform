@@ -21,8 +21,10 @@ without network access; it does not verify release readiness or deploy anything.
 
 The shared foundation Bicep composes one VNet, a delegated ACI runner subnet,
 NAT, restrictive runner NSG, private DNS zones, and a dedicated deployment-script
-identity and storage account. A separate awaited probe checks private DNS and
-TCP/TLS connectivity. These modules have only been compiled and unit-tested;
+identity and storage account. It also composes a private Premium registry,
+shared Log Analytics workspace, and separate dev/staging Application Insights
+resources. A separate awaited probe checks private DNS and TCP/TLS connectivity.
+These modules have only been compiled and unit-tested;
 they are not yet wired to azd, deploy workloads, or establish that a runner works
 in Azure. Do not deploy them independently as a substitute for the stack.
 
@@ -42,3 +44,6 @@ plane; structural validation does not establish connectivity or trust. The NSG
 allows private endpoint ports 443, 445, and 1433, DNS, storage service traffic,
 and those explicit HTTPS ranges, and denies other runner outbound traffic.
 SQL connectivity must use a policy compatible with this port restriction.
+Application Insights local authentication is disabled: workloads need managed
+identity-based telemetry authentication and a scoped ingestion role. Neither
+the role wiring nor end-to-end telemetry has been implemented yet.

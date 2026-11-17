@@ -42,6 +42,8 @@ retain their separate gates.
 - [x] Shared VNet, runner NAT/NSG, private DNS and private execution storage
   modules compose and compile; their network-input validator has local tests.
   Their security, egress, readiness and actual connectivity remain unverified.
+- [x] Shared registry, workspace and dev/staging Application Insights modules
+  compile. Telemetry identity and networked image deployment remain unverified.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
   azd lifecycle; no remote execution or resource provisioning has occurred.
