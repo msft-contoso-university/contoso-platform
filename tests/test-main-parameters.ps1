@@ -8,9 +8,11 @@ $sample = @{
     ADLC_VNET_PREFIX = '10.60.0.0/16'
     ADLC_RUNNER_SUBNET_PREFIX = '10.60.0.0/24'
     ADLC_ENDPOINT_SUBNET_PREFIX = '10.60.1.0/24'
-    ADLC_APPLICATION_SUBNETS = '[{"name":"dev-apps","addressPrefix":"10.60.2.0/24","delegation":"Microsoft.Web/serverFarms"},{"name":"staging-apps","addressPrefix":"10.60.3.0/24","delegation":"Microsoft.Web/serverFarms"}]'
+    ADLC_APPLICATION_SUBNETS = '[{"name":"dev-apps","addressPrefix":"10.60.2.0/24","delegation":"Microsoft.Web/serverFarms"},{"name":"staging-apps","addressPrefix":"10.60.3.0/24","delegation":"Microsoft.Web/serverFarms"},{"name":"dev-containers","addressPrefix":"10.60.4.0/24","delegation":"Microsoft.App/environments"},{"name":"staging-containers","addressPrefix":"10.60.5.0/24","delegation":"Microsoft.App/environments"}]'
     ADLC_DEV_APP_SUBNET_NAME = 'dev-apps'
     ADLC_STAGING_APP_SUBNET_NAME = 'staging-apps'
+    ADLC_DEV_CONTAINER_SUBNET_NAME = 'dev-containers'
+    ADLC_STAGING_CONTAINER_SUBNET_NAME = 'staging-containers'
     ADLC_DEV_STUDENTS_AUDIENCE = 'api://dev-students'
     ADLC_DEV_ACADEMICS_AUDIENCE = 'api://dev-academics'
     ADLC_STAGING_STUDENTS_AUDIENCE = 'api://staging-students'
@@ -27,7 +29,7 @@ $output = ($raw | Out-String) | ConvertFrom-Json
 $parameters = ($output.parametersJson | ConvertFrom-Json).parameters
 if ($parameters.environmentName.value -ne 'ci-stack' -or
     $parameters.location.value -ne 'eastus2' -or
-    $parameters.applicationSubnets.value.Count -ne 2 -or
+    $parameters.applicationSubnets.value.Count -ne 4 -or
     $parameters.runnerHttpsEgressPrefixes.value.Count -ne 1 -or
     $parameters.databaseSku.value.name -ne 'Basic' -or
     $parameters.dailyQuotaGb.value -ne 1) {

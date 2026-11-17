@@ -53,6 +53,17 @@ def validate(config):
         if (subnet is None or subnet.get("delegation") != "Microsoft.Web/serverFarms"
                 or network(subnet["addressPrefix"]).prefixlen > 28):
             raise ValueError(f"App Service subnet {name} must exist, be at least /28, and be delegated to Microsoft.Web/serverFarms")
+    container_names = (config["devContainerSubnetName"], config["stagingContainerSubnetName"])
+    if any(not isinstance(name, str) or not name for name in container_names):
+        raise ValueError("Container Apps subnet names must be nonempty strings")
+    all_names = [dev_name.lower(), staging_name.lower(), *(name.lower() for name in container_names)]
+    if len(set(all_names)) != 4:
+        raise ValueError("App Service and Container Apps subnets must all be distinct")
+    for name in container_names:
+        subnet = app_by_name.get(name.lower())
+        if (subnet is None or subnet.get("delegation") != "Microsoft.App/environments"
+                or network(subnet["addressPrefix"]).prefixlen > 27):
+            raise ValueError(f"Container Apps subnet {name} must exist, be at least /27, and be delegated to Microsoft.App/environments")
     egress = config["runnerHttpsEgressPrefixes"]
     if not isinstance(egress, list) or not egress or len(egress) > 1000:
         raise ValueError("one to 1000 explicit runner HTTPS egress prefixes are required")

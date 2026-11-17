@@ -25,6 +25,7 @@ stages. It requires `AZURE_ENV_NAME`, `AZURE_LOCATION`,
 `ADLC_STACK_GENERATION`, `ADLC_VNET_PREFIX`, `ADLC_RUNNER_SUBNET_PREFIX`,
 `ADLC_ENDPOINT_SUBNET_PREFIX`, `ADLC_APPLICATION_SUBNETS` (JSON array),
 `ADLC_DEV_APP_SUBNET_NAME`, `ADLC_STAGING_APP_SUBNET_NAME`,
+`ADLC_DEV_CONTAINER_SUBNET_NAME`, `ADLC_STAGING_CONTAINER_SUBNET_NAME`,
 `ADLC_RUNNER_HTTPS_EGRESS_PREFIXES` (JSON array), `ADLC_DATABASE_SKU` (JSON
 object), and `ADLC_LOG_DAILY_QUOTA_GB` (integer), plus
 `ADLC_{DEV,STAGING}_{STUDENTS,ACADEMICS}_AUDIENCE`. There are no target or
@@ -44,6 +45,11 @@ The subscription-scope template composes these resources and private Students
 and Academics App Services for both stages. This remains incomplete and
 unvalidated in Azure; it does not deploy packages or establish runner
 connectivity. Do not deploy individual modules as a substitute for the stack.
+The same template provisions internal Container Apps environments and records
+their platform-managed infrastructure group names. A separate release module
+requires an existing private-registry image digest, avoiding a first-deployment
+dependency cycle. The protected build/push/release orchestration is not yet
+implemented, and teardown must account for the platform-managed groups.
 
 The storage account follows the documented private deployment-script path:
 shared-key capability is enabled, public network access is restricted by a

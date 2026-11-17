@@ -21,6 +21,8 @@ param applicationSubnets array
 @description('Names of distinct, Microsoft.Web/serverFarms-delegated application subnets in the shared VNet.')
 param devAppSubnetName string
 param stagingAppSubnetName string
+param devContainerSubnetName string
+param stagingContainerSubnetName string
 
 @description('Explicit audiences of the registered Students and Academics APIs for each environment.')
 @minLength(1)
@@ -166,6 +168,42 @@ module stagingApis './modules/private-api-hosting.bicep' = {
   }
 }
 
+module devEnrollments './modules/enrollments-hosting.bicep' = {
+  name: 'adlc-dev-enrollments'
+  scope: devGroup
+  params: {
+    suffix: '${suffix}-dev'
+    location: location
+    networkId: shared.outputs.networkResourceId
+    infrastructureSubnetId: '${shared.outputs.networkResourceId}/subnets/${devContainerSubnetName}'
+    infrastructureResourceGroupName: 'rg-adlc-${suffix}-dev-cae'
+    sharedResourceGroup: sharedGroupName
+    executionStorageName: sharedStorageName
+    workspaceResourceId: shared.outputs.workspaceResourceId
+    insightsName: 'appi-adlc-${suffix}-dev'
+    registryName: 'adlc${suffix}'
+    tags: union(tags, { 'adlc-stage': 'dev' })
+  }
+}
+
+module stagingEnrollments './modules/enrollments-hosting.bicep' = {
+  name: 'adlc-staging-enrollments'
+  scope: stagingGroup
+  params: {
+    suffix: '${suffix}-staging'
+    location: location
+    networkId: shared.outputs.networkResourceId
+    infrastructureSubnetId: '${shared.outputs.networkResourceId}/subnets/${stagingContainerSubnetName}'
+    infrastructureResourceGroupName: 'rg-adlc-${suffix}-staging-cae'
+    sharedResourceGroup: sharedGroupName
+    executionStorageName: sharedStorageName
+    workspaceResourceId: shared.outputs.workspaceResourceId
+    insightsName: 'appi-adlc-${suffix}-staging'
+    registryName: 'adlc${suffix}'
+    tags: union(tags, { 'adlc-stage': 'staging' })
+  }
+}
+
 output ADLC_STACK_NAME string = environmentName
 output ADLC_STACK_GENERATION string = generation
 output ADLC_SHARED_RESOURCE_GROUP string = sharedGroup.name
@@ -186,31 +224,53 @@ output ADLC_REGISTRY_LOGIN_SERVER string = shared.outputs.registryLoginServer
 output ADLC_WORKSPACE_RESOURCE_ID string = shared.outputs.workspaceResourceId
 output ADLC_DEV_INSIGHTS_RESOURCE_ID string = shared.outputs.devInsightsResourceId
 output ADLC_STAGING_INSIGHTS_RESOURCE_ID string = shared.outputs.stagingInsightsResourceId
-output ADLC_DEV_STUDENTS_APP_ID string = devApis.outputs.studentsAppId
-output ADLC_DEV_STUDENTS_HOST string = devApis.outputs.studentsHostName
 output ADLC_DEV_STUDENTS_IDENTITY_NAME string = devApis.outputs.studentsIdentityName
-output ADLC_DEV_STUDENTS_IDENTITY_PRINCIPAL_ID string = devApis.outputs.studentsIdentityPrincipalId
 output ADLC_DEV_STUDENTS_MIGRATION_IDENTITY_NAME string = devApis.outputs.studentsMigrationIdentityName
-output ADLC_DEV_STUDENTS_MIGRATION_IDENTITY_ID string = devApis.outputs.studentsMigrationIdentityResourceId
-output ADLC_DEV_STUDENTS_MIGRATION_CLIENT_ID string = devApis.outputs.studentsMigrationIdentityClientId
-output ADLC_DEV_ACADEMICS_APP_ID string = devApis.outputs.academicsAppId
-output ADLC_DEV_ACADEMICS_HOST string = devApis.outputs.academicsHostName
 output ADLC_DEV_ACADEMICS_IDENTITY_NAME string = devApis.outputs.academicsIdentityName
-output ADLC_DEV_ACADEMICS_IDENTITY_PRINCIPAL_ID string = devApis.outputs.academicsIdentityPrincipalId
 output ADLC_DEV_ACADEMICS_MIGRATION_IDENTITY_NAME string = devApis.outputs.academicsMigrationIdentityName
-output ADLC_DEV_ACADEMICS_MIGRATION_IDENTITY_ID string = devApis.outputs.academicsMigrationIdentityResourceId
-output ADLC_DEV_ACADEMICS_MIGRATION_CLIENT_ID string = devApis.outputs.academicsMigrationIdentityClientId
-output ADLC_STAGING_STUDENTS_APP_ID string = stagingApis.outputs.studentsAppId
-output ADLC_STAGING_STUDENTS_HOST string = stagingApis.outputs.studentsHostName
 output ADLC_STAGING_STUDENTS_IDENTITY_NAME string = stagingApis.outputs.studentsIdentityName
-output ADLC_STAGING_STUDENTS_IDENTITY_PRINCIPAL_ID string = stagingApis.outputs.studentsIdentityPrincipalId
 output ADLC_STAGING_STUDENTS_MIGRATION_IDENTITY_NAME string = stagingApis.outputs.studentsMigrationIdentityName
-output ADLC_STAGING_STUDENTS_MIGRATION_IDENTITY_ID string = stagingApis.outputs.studentsMigrationIdentityResourceId
-output ADLC_STAGING_STUDENTS_MIGRATION_CLIENT_ID string = stagingApis.outputs.studentsMigrationIdentityClientId
-output ADLC_STAGING_ACADEMICS_APP_ID string = stagingApis.outputs.academicsAppId
-output ADLC_STAGING_ACADEMICS_HOST string = stagingApis.outputs.academicsHostName
 output ADLC_STAGING_ACADEMICS_IDENTITY_NAME string = stagingApis.outputs.academicsIdentityName
-output ADLC_STAGING_ACADEMICS_IDENTITY_PRINCIPAL_ID string = stagingApis.outputs.academicsIdentityPrincipalId
 output ADLC_STAGING_ACADEMICS_MIGRATION_IDENTITY_NAME string = stagingApis.outputs.academicsMigrationIdentityName
-output ADLC_STAGING_ACADEMICS_MIGRATION_IDENTITY_ID string = stagingApis.outputs.academicsMigrationIdentityResourceId
-output ADLC_STAGING_ACADEMICS_MIGRATION_CLIENT_ID string = stagingApis.outputs.academicsMigrationIdentityClientId
+output ADLC_DEV_ENROLLMENTS_IDENTITY_NAME string = devEnrollments.outputs.runtimeIdentityName
+output ADLC_DEV_ENROLLMENTS_MIGRATION_IDENTITY_NAME string = devEnrollments.outputs.migrationIdentityName
+output ADLC_STAGING_ENROLLMENTS_IDENTITY_NAME string = stagingEnrollments.outputs.runtimeIdentityName
+output ADLC_STAGING_ENROLLMENTS_MIGRATION_IDENTITY_NAME string = stagingEnrollments.outputs.migrationIdentityName
+output ADLC_DEV_WORKLOADS object = {
+  studentsAppId: devApis.outputs.studentsAppId
+  studentsHost: devApis.outputs.studentsHostName
+  studentsPrincipalId: devApis.outputs.studentsIdentityPrincipalId
+  studentsMigrationId: devApis.outputs.studentsMigrationIdentityResourceId
+  studentsMigrationClientId: devApis.outputs.studentsMigrationIdentityClientId
+  academicsAppId: devApis.outputs.academicsAppId
+  academicsHost: devApis.outputs.academicsHostName
+  academicsPrincipalId: devApis.outputs.academicsIdentityPrincipalId
+  academicsMigrationId: devApis.outputs.academicsMigrationIdentityResourceId
+  academicsMigrationClientId: devApis.outputs.academicsMigrationIdentityClientId
+  enrollmentsEnvironmentId: devEnrollments.outputs.environmentId
+  enrollmentsInfraResourceGroup: devEnrollments.outputs.infrastructureResourceGroup
+  enrollmentsIdentityId: devEnrollments.outputs.runtimeIdentityResourceId
+  enrollmentsIdentityClientId: devEnrollments.outputs.runtimeIdentityClientId
+  enrollmentsPrincipalId: devEnrollments.outputs.runtimeIdentityPrincipalId
+  enrollmentsMigrationId: devEnrollments.outputs.migrationIdentityResourceId
+  enrollmentsMigrationClientId: devEnrollments.outputs.migrationIdentityClientId
+}
+output ADLC_STAGING_WORKLOADS object = {
+  studentsAppId: stagingApis.outputs.studentsAppId
+  studentsHost: stagingApis.outputs.studentsHostName
+  studentsPrincipalId: stagingApis.outputs.studentsIdentityPrincipalId
+  studentsMigrationId: stagingApis.outputs.studentsMigrationIdentityResourceId
+  studentsMigrationClientId: stagingApis.outputs.studentsMigrationIdentityClientId
+  academicsAppId: stagingApis.outputs.academicsAppId
+  academicsHost: stagingApis.outputs.academicsHostName
+  academicsPrincipalId: stagingApis.outputs.academicsIdentityPrincipalId
+  academicsMigrationId: stagingApis.outputs.academicsMigrationIdentityResourceId
+  academicsMigrationClientId: stagingApis.outputs.academicsMigrationIdentityClientId
+  enrollmentsEnvironmentId: stagingEnrollments.outputs.environmentId
+  enrollmentsInfraResourceGroup: stagingEnrollments.outputs.infrastructureResourceGroup
+  enrollmentsIdentityId: stagingEnrollments.outputs.runtimeIdentityResourceId
+  enrollmentsIdentityClientId: stagingEnrollments.outputs.runtimeIdentityClientId
+  enrollmentsPrincipalId: stagingEnrollments.outputs.runtimeIdentityPrincipalId
+  enrollmentsMigrationId: stagingEnrollments.outputs.migrationIdentityResourceId
+  enrollmentsMigrationClientId: stagingEnrollments.outputs.migrationIdentityClientId
+}

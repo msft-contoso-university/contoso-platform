@@ -51,6 +51,10 @@ retain their separate gates.
   compile, including private endpoints, managed identities, Entra-only SQL
   connection strings and resource-scoped telemetry roles. Workload deployment,
   permissions, outbound network connectivity and live behavior are unverified.
+- [x] Internal Container Apps environment and digest-based release templates
+  compile, with private DNS and managed identities. Image build/push, release
+  orchestration, DNS, registry access and platform-managed group teardown
+  remain unverified and incomplete.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
   azd lifecycle; no remote execution or resource provisioning has occurred.
