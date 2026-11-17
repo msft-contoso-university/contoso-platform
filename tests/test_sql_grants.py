@@ -2,6 +2,8 @@ import importlib.util
 import hashlib
 import io
 import json
+import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -17,6 +19,11 @@ TARGET = {"database": "students", "runtime": "students-api", "migration": "stude
 
 
 class SqlGrantTests(unittest.TestCase):
+    def test_standalone_grant_runner_is_blocked(self):
+        result = subprocess.run([sys.executable, str(PATH)], capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("principal SIDs", result.stderr)
+
     def test_bundled_shell_script_has_linux_line_endings(self):
         script = (PATH.parents[2] / "scripts" / "grant-sql-access.sh").read_bytes()
         self.assertNotIn(b"\r\n", script)

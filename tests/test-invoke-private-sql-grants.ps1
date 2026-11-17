@@ -26,9 +26,14 @@ foreach ($stage in @('DEV', 'STAGING')) {
     $global:testValues["ADLC_${stage}_SQL_BOOTSTRAP_CLIENT_ID"] = '33333333-3333-4333-8333-333333333333'
     $global:testValues["ADLC_${stage}_SQL_SERVER_NAME"] = "sql-$($stage.ToLowerInvariant())"
     $global:testValues["ADLC_${stage}_SQL_GRANT_TARGETS"] = $targets
+    foreach ($service in @('STUDENTS', 'ACADEMICS', 'ENROLLMENTS')) {
+        $global:testValues["ADLC_${stage}_${service}_IDENTITY_NAME"] = "$($service.ToLowerInvariant())-api"
+        $global:testValues["ADLC_${stage}_${service}_MIGRATION_IDENTITY_NAME"] = "$($service.ToLowerInvariant())-migration"
+    }
 }
 $global:testDeployments = @()
 $global:testBadTenant = $false
+$global:testBadIdentity = $false
 
 function global:azd {
     $global:LASTEXITCODE = 0
@@ -46,6 +51,18 @@ function global:az {
     if ($args[0] -eq 'group') {
         return (@{ tags = @{ 'adlc-stack' = 'demo'; 'adlc-generation' = 'one' } } | ConvertTo-Json -Compress)
     }
+    if ($args[0] -eq 'identity') {
+        $name = [string] $args[([array]::IndexOf($args, '--name') + 1)]
+        $group = [string] $args[([array]::IndexOf($args, '--resource-group') + 1)]
+        $stage = $group.Substring('adlc-'.Length)
+        $generation = if ($global:testBadIdentity -and $stage -eq 'staging') { 'other' } else { 'one' }
+        return (@{
+            id = "/subscriptions/$subscription/resourceGroups/$group/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$name"
+            clientId = '33333333-3333-4333-8333-333333333333'
+            principalId = '44444444-4444-4444-8444-444444444444'
+            tags = @{ 'adlc-stack' = 'demo'; 'adlc-generation' = $generation; 'adlc-stage' = $stage }
+        } | ConvertTo-Json -Compress)
+    }
     if ($args[0] -eq 'deployment') {
         $file = [string] $args[([array]::IndexOf($args, '--parameters') + 1)]
         $parameters = Get-Content -Raw -LiteralPath $file.Substring(1) | ConvertFrom-Json -AsHashtable
@@ -56,9 +73,14 @@ function global:az {
 }
 
 try {
-    & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
-    if ($global:testDeployments.Count -ne 2) { throw 'Expected both private SQL grant deployments.' }
-    if ($global:testDeployments[0].targets.value.Count -ne 3) { throw 'Expected all three service targets.' }
+    $refused = $false
+    try {
+        & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
+    } catch {
+        if ($_.Exception.Message -notmatch 'principal SID') { throw }
+        $refused = $true
+    }
+    if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Unverified SQL principal binding was not blocked.' }
     $global:testDeployments = @()
     $global:testBadTenant = $true
     $refused = $false
@@ -83,6 +105,26 @@ try {
         $refused = $true
     }
     if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Invalid staging identities were not rejected before dev deployment.' }
+    $global:testValues.ADLC_STAGING_SQL_GRANT_TARGETS = $targets
+    $global:testBadIdentity = $true
+    $refused = $false
+    try {
+        & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
+    } catch {
+        if ($_.Exception.Message -notmatch 'stack ownership') { throw }
+        $refused = $true
+    }
+    if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Unowned staging identity was not rejected before dev deployment.' }
+    $global:testBadIdentity = $false
+    $global:testValues.ADLC_STAGING_STUDENTS_IDENTITY_NAME = 'different-api'
+    $refused = $false
+    try {
+        & (Join-Path $PSScriptRoot '..\scripts\invoke-private-sql-grants.ps1') | Out-Null
+    } catch {
+        if ($_.Exception.Message -notmatch 'stack outputs') { throw }
+        $refused = $true
+    }
+    if (-not $refused -or $global:testDeployments.Count -ne 0) { throw 'Identity mismatch was not rejected before dev deployment.' }
     Write-Output 'Private SQL grant orchestration tests passed.'
 } finally {
     Remove-Item Function:\azd, Function:\az -ErrorAction SilentlyContinue

@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import json
 import os
@@ -105,13 +104,8 @@ def run(server, client_id, targets, grant_script, output_path):
 
 
 if __name__ == "__main__":
-    try:
-        run(
-            os.environ["SQL_SERVER"], os.environ["BOOTSTRAP_CLIENT_ID"],
-            json.loads(os.environ["GRANT_TARGETS"]),
-            base64.b64decode(os.environ["GRANT_SCRIPT"], validate=True),
-            os.environ["AZ_SCRIPTS_OUTPUT_PATH"],
-        )
-    except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
-        print(f"Private SQL grants failed: {error}", file=sys.stderr)
-        sys.exit(1)
+    print(
+        "Private SQL grants are blocked until database principal SIDs are verified against managed identity client IDs.",
+        file=sys.stderr,
+    )
+    sys.exit(1)

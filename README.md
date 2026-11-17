@@ -73,7 +73,10 @@ assigns runtime identities read/write access and grants DDL only to distinct
 migration identities. Private API hosting defines separate migration identities
 and scoped execution-storage access for Students and Academics; Enrollments
 identity and migration execution are not yet wired. The azd hook awaits private grant deployments and checks
-both stages' ownership and inputs, but lifecycle guards prevent it from running.
+both stages' ownership and inputs, but is additionally blocked because the
+copied grant script does not verify an existing database principal's SID against
+the managed identity client ID. The private runner also fails closed; lifecycle
+guards independently prevent the hook from running.
 SQL principal discovery permissions, migration identities, migrations, and
 Azure execution itself are not yet complete. The copied SQL grant scripts must not be run directly
 from an ordinary workstation against a private endpoint.

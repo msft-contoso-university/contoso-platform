@@ -42,4 +42,5 @@ if ($LASTEXITCODE -eq 0) {
         throw 'Missing location unexpectedly selected a default.'
     }
 }
+$global:LASTEXITCODE = 0
 Write-Output 'Parameter bindings compile with explicit inputs and do not supply a default location.'

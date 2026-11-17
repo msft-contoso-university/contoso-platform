@@ -31,6 +31,22 @@ function Assert-ResourceId([string] $Id, [string] $Subscription, [string] $Group
     }
 }
 
+function Assert-StackIdentity([string] $Name, [string] $Group, [string] $Stage) {
+    $identityJson = & az identity show --name $Name --resource-group $Group --subscription $subscription --output json --only-show-errors
+    if ($LASTEXITCODE -ne 0) { throw "Unable to verify identity $Name in $Group." }
+    $identityInfo = $identityJson | ConvertFrom-Json
+    $expectedId = "/subscriptions/$subscription/resourceGroups/$Group/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$Name"
+    if ($identityInfo.id -ine $expectedId -or
+        $identityInfo.tags.'adlc-stack' -ne $stack -or
+        $identityInfo.tags.'adlc-generation' -ne $generation -or
+        $identityInfo.tags.'adlc-stage' -ne $Stage.ToLowerInvariant() -or
+        -not [guid]::TryParse($identityInfo.principalId, [ref] [guid]::Empty) -or
+        -not [guid]::TryParse($identityInfo.clientId, [ref] [guid]::Empty)) {
+        throw "Identity $Name does not match stack ownership and identity requirements."
+    }
+    return $identityInfo
+}
+
 $values = Get-AzdValues
 $subscription = Get-RequiredValue $values 'AZURE_SUBSCRIPTION_ID'
 $tenant = Get-RequiredValue $values 'AZURE_TENANT_ID'
@@ -89,6 +105,8 @@ foreach ($stage in @('DEV', 'STAGING')) {
     $databases = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $identityNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $bootstrapName = ($identity -split '/')[-1]
+    $bootstrap = Assert-StackIdentity $bootstrapName $group $stage
+    if ($bootstrap.clientId -ne $client) { throw "Bootstrap identity client ID does not match $stage." }
     foreach ($target in $targets) {
         if ($target -isnot [hashtable] -or $target.Count -ne 3 -or
             -not $target.ContainsKey('database') -or -not $target.ContainsKey('runtime') -or
@@ -102,12 +120,22 @@ foreach ($stage in @('DEV', 'STAGING')) {
                 throw "Runtime, migration and bootstrap identities must be distinct for $stage."
             }
         }
+        $service = $target.database.ToUpperInvariant()
+        $expectedRuntime = Get-RequiredValue $values "ADLC_${stage}_${service}_IDENTITY_NAME"
+        $expectedMigration = Get-RequiredValue $values "ADLC_${stage}_${service}_MIGRATION_IDENTITY_NAME"
+        if ($target.runtime -cne $expectedRuntime -or $target.migration -cne $expectedMigration) {
+            throw "Grant identities for $service do not match the $stage stack outputs."
+        }
+        $null = Assert-StackIdentity $target.runtime $group $stage
+        $null = Assert-StackIdentity $target.migration $group $stage
     }
     $plans += @{
         stage = $stage; group = $group; identity = $identity
         client = $client; server = $server; targets = $targets
     }
 }
+
+throw 'SQL grants are blocked: the grant script does not verify database principal SID against the managed identity client ID.'
 
 foreach ($plan in $plans) {
     $stage = $plan.stage
