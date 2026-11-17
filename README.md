@@ -105,3 +105,8 @@ It requires a separately provisioned `adlc-state` branch and tightly scoped
 write credentials, neither of which has been configured or verified. The
 lifecycle does not yet invoke it. Do not clear an abandoned lock until the
 owning operation is known to have stopped and the exact recovery is approved.
+`scripts\run-locked-azd.py` is a disabled prototype: its tested core passes a
+fresh operation ID only to the child process and retains the lock on failure.
+It cannot run via its CLI, does not integrate hook verification, and blocks
+destroy entirely. It does not satisfy the required direct `azd up` and
+confirmed `azd down` lifecycle.

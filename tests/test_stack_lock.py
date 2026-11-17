@@ -55,6 +55,15 @@ class StackLockTests(unittest.TestCase):
                 module.release(PATHNAME, OWNER)
             self.assertEqual(api.call_count, 1)
 
+    def test_verify_requires_exact_owner_action_and_generation(self):
+        with patch.object(module, "gh_api", return_value=record()):
+            module.verify(PATHNAME, OWNER, "create", "one")
+            for owner, action, generation in (
+                (OTHER, "create", "one"), (OWNER, "destroy", "one"), (OWNER, "create", "two")
+            ):
+                with self.assertRaisesRegex(module.LockError, "does not belong"):
+                    module.verify(PATHNAME, owner, action, generation)
+
 
 if __name__ == "__main__":
     unittest.main()

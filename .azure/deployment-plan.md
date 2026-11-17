@@ -62,6 +62,9 @@ retain their separate gates.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
   azd lifecycle; no remote execution or resource provisioning has occurred.
+- [ ] Integrate stack-wide locking with the canonical azd entrypoint, explicit
+  destroy confirmation and recovery; the process-nonce wrapper is disabled
+  and is not a substitute for direct azd lifecycle behavior.
 - [ ] Implement workload, platform, integration and deterministic checks.
 - [ ] Select region and establish resource inventory, quotas and capacity.
 - [ ] Complete identity, GitHub, SRE and consent prerequisites.

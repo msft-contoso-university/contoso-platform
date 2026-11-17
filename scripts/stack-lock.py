@@ -101,9 +101,17 @@ def release(path, operation_id):
     })
 
 
+def verify(path, operation_id, action, generation):
+    owner = str(uuid.UUID(operation_id))
+    _, current = read_lock(path)
+    if (current.get("operationId") != owner or current.get("action") != action
+            or current.get("generation") != generation):
+        raise LockError("Stack lock does not belong to this operation and action.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Acquire or release a stack operation lock in GitHub.")
-    parser.add_argument("command", choices=("acquire", "release"))
+    parser.add_argument("command", choices=("acquire", "verify", "release"))
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--subscription", required=True)
     parser.add_argument("--environment", required=True)
@@ -112,11 +120,13 @@ def main():
     parser.add_argument("--action", choices=("create", "update", "promote", "destroy"))
     args = parser.parse_args()
     try:
-        if args.command == "acquire" and args.action is None:
-            raise ValueError("--action is required to acquire a lock")
+        if args.command in ("acquire", "verify") and args.action is None:
+            raise ValueError("--action is required to acquire or verify a lock")
         path = lock_path(args.tenant, args.subscription, args.environment, args.generation)
         if args.command == "acquire":
             acquire(path, args.operation_id, args.action, args.generation)
+        elif args.command == "verify":
+            verify(path, args.operation_id, args.action, args.generation)
         else:
             release(path, args.operation_id)
     except (ValueError, LockError) as error:
