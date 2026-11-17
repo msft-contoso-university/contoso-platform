@@ -1,6 +1,7 @@
 import argparse
 import ipaddress
 import json
+import os
 import sys
 
 PRIVATE = tuple(ipaddress.ip_network(cidr) for cidr in (
@@ -73,13 +74,41 @@ def validate(config):
             raise ValueError("runner HTTPS egress must use bounded public IPv4 prefixes")
 
 
+def azd_environment_config(environment):
+    variables = {
+        "addressPrefix": "ADLC_VNET_PREFIX",
+        "runnerSubnetPrefix": "ADLC_RUNNER_SUBNET_PREFIX",
+        "endpointSubnetPrefix": "ADLC_ENDPOINT_SUBNET_PREFIX",
+        "applicationSubnets": "ADLC_APPLICATION_SUBNETS",
+        "devAppSubnetName": "ADLC_DEV_APP_SUBNET_NAME",
+        "stagingAppSubnetName": "ADLC_STAGING_APP_SUBNET_NAME",
+        "devContainerSubnetName": "ADLC_DEV_CONTAINER_SUBNET_NAME",
+        "stagingContainerSubnetName": "ADLC_STAGING_CONTAINER_SUBNET_NAME",
+        "runnerHttpsEgressPrefixes": "ADLC_RUNNER_HTTPS_EGRESS_PREFIXES",
+    }
+    config = {}
+    for key, name in variables.items():
+        value = environment.get(name)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Missing required azd network input: {name}")
+        config[key] = json.loads(value) if key in ("applicationSubnets", "runnerHttpsEgressPrefixes") else value
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser(description="Validate shared VNet and explicit runner egress inputs.")
-    parser.add_argument("config", help="Path to a JSON network configuration object")
+    parser.add_argument("config", nargs="?", help="Path to a JSON network configuration object")
+    parser.add_argument("--azd-env", action="store_true", help="Read the current hook's azd environment inputs")
     args = parser.parse_args()
+    if bool(args.config) == args.azd_env:
+        parser.error("Provide exactly one JSON configuration path or --azd-env.")
     try:
-        with open(args.config, encoding="utf-8") as source:
-            validate(json.load(source))
+        if args.azd_env:
+            config = azd_environment_config(os.environ)
+        else:
+            with open(args.config, encoding="utf-8") as source:
+                config = json.load(source)
+        validate(config)
     except (OSError, KeyError, ValueError) as error:
         print(f"Invalid network configuration: {error}", file=sys.stderr)
         return 1

@@ -10,6 +10,7 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "get-azd-ancestor.ps1"
 LOCK_SCRIPT = SCRIPT.with_name("native-stack-lock.ps1")
+PREUP_SCRIPT = SCRIPT.with_name("preup.ps1")
 
 
 class AzdAncestorTests(unittest.TestCase):
@@ -142,6 +143,28 @@ class AzdAncestorTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("Unsupported or independently invoked azd command", result.stdout + result.stderr)
             self.assertFalse((root / "absent").exists())
+
+    def test_canonical_preup_rejects_independent_hook_execution(self):
+        if not shutil.which("azd"):
+            if os.environ.get("ADLC_REQUIRE_AZD_SPIKE") == "1":
+                self.fail("azd is required for the native hook check")
+            self.skipTest("azd not installed; independent hook refusal was not exercised")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            command = "& $env:ADLC_PREUP_SCRIPT"
+            root.joinpath("azure.yaml").write_text(
+                f"name: adlc-preup-check\nhooks:\n  preup:\n    shell: pwsh\n    run: {json.dumps(command)}\n",
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env.update({"ADLC_PREUP_SCRIPT": str(PREUP_SCRIPT), "AZURE_ENV_NAME": "preup-check",
+                        "AZD_DISABLE_TELEMETRY": "true"})
+            result = subprocess.run(
+                ["azd", "-C", str(root), "hooks", "run", "preup", "--no-prompt"],
+                env=env, capture_output=True, text=True, timeout=60,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Unsupported or independently invoked azd command", result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

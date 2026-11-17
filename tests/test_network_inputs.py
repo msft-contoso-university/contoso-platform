@@ -1,4 +1,8 @@
 import importlib.util
+import json
+import os
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -30,6 +34,54 @@ def valid_config():
 class NetworkInputTests(unittest.TestCase):
     def test_valid_configuration(self):
         module.validate(valid_config())
+
+    def test_azd_environment_uses_the_same_network_inputs(self):
+        config = valid_config()
+        names = {
+            "addressPrefix": "ADLC_VNET_PREFIX",
+            "runnerSubnetPrefix": "ADLC_RUNNER_SUBNET_PREFIX",
+            "endpointSubnetPrefix": "ADLC_ENDPOINT_SUBNET_PREFIX",
+            "applicationSubnets": "ADLC_APPLICATION_SUBNETS",
+            "devAppSubnetName": "ADLC_DEV_APP_SUBNET_NAME",
+            "stagingAppSubnetName": "ADLC_STAGING_APP_SUBNET_NAME",
+            "devContainerSubnetName": "ADLC_DEV_CONTAINER_SUBNET_NAME",
+            "stagingContainerSubnetName": "ADLC_STAGING_CONTAINER_SUBNET_NAME",
+            "runnerHttpsEgressPrefixes": "ADLC_RUNNER_HTTPS_EGRESS_PREFIXES",
+        }
+        env = {name: json.dumps(config[key]) if isinstance(config[key], list) else config[key]
+               for key, name in names.items()}
+        self.assertEqual(config, module.azd_environment_config(env))
+        module.validate(module.azd_environment_config(env))
+        del env["ADLC_VNET_PREFIX"]
+        with self.assertRaisesRegex(ValueError, "ADLC_VNET_PREFIX"):
+            module.azd_environment_config(env)
+        env["ADLC_VNET_PREFIX"] = config["addressPrefix"]
+        env["ADLC_APPLICATION_SUBNETS"] = "{invalid"
+        with self.assertRaises(ValueError):
+            module.azd_environment_config(env)
+
+    def test_azd_environment_cli_rejects_bad_effective_network(self):
+        config = valid_config()
+        env = os.environ.copy()
+        env.update({
+            "ADLC_VNET_PREFIX": config["addressPrefix"],
+            "ADLC_RUNNER_SUBNET_PREFIX": config["runnerSubnetPrefix"],
+            "ADLC_ENDPOINT_SUBNET_PREFIX": config["endpointSubnetPrefix"],
+            "ADLC_APPLICATION_SUBNETS": json.dumps(config["applicationSubnets"]),
+            "ADLC_DEV_APP_SUBNET_NAME": config["devAppSubnetName"],
+            "ADLC_STAGING_APP_SUBNET_NAME": config["stagingAppSubnetName"],
+            "ADLC_DEV_CONTAINER_SUBNET_NAME": config["devContainerSubnetName"],
+            "ADLC_STAGING_CONTAINER_SUBNET_NAME": config["stagingContainerSubnetName"],
+            "ADLC_RUNNER_HTTPS_EGRESS_PREFIXES": json.dumps(config["runnerHttpsEgressPrefixes"]),
+        })
+        result = subprocess.run([sys.executable, str(PATH), "--azd-env"], env=env,
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        env["ADLC_ENDPOINT_SUBNET_PREFIX"] = config["runnerSubnetPrefix"]
+        result = subprocess.run([sys.executable, str(PATH), "--azd-env"], env=env,
+                                capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("overlaps", result.stderr)
 
     def test_overlapping_subnet_is_rejected(self):
         config = valid_config()

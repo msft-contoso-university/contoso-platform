@@ -67,6 +67,9 @@ retain their separate gates.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
   azd lifecycle; no remote execution or resource provisioning has occurred.
+  The canonical preup hook now checks explicit network inputs before the
+  existing unconditional block. Real `azd up` ordering and environment
+  propagation have not been tested.
 - [ ] Integrate stack-wide locking with the canonical azd entrypoint, explicit
   destroy confirmation and recovery; the process-nonce wrapper is disabled
   and is not a substitute for direct azd lifecycle behavior. Experimental
@@ -84,6 +87,9 @@ retain their separate gates.
 - [ ] Run azure-validate and record evidence before azure-deploy.
 - [ ] Obtain all deployment approvals, then deploy and verify.
 - [ ] Exercise scoped, explicitly confirmed teardown and recreation.
+  azd 1.38.0 deletes entire groups discovered from the subscription deployment;
+  exact inventory reconciliation, confirmation, managed-group and residual
+  checks remain required before its blocked down operation can be enabled.
 
 ## Validation proof
 

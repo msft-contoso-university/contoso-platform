@@ -74,11 +74,13 @@ exception, and an Azure Files private endpoint. The runner identity receives
 Storage File Data Privileged Contributor only on that storage account. These
 requirements and their permissions must be reviewed before deployment.
 
-The caller must validate explicit network inputs with
-`python scripts\validate-network-inputs.py <network-config.json>`; this check is
-not yet connected to an azd lifecycle. It rejects overlapping or non-private
+The canonical `preup` hook reads the azd environment's network inputs and
+runs `scripts\validate-network-inputs.py --azd-env` before the incomplete
+lifecycle guard. The same validator accepts a JSON file for offline checking:
+`python scripts\validate-network-inputs.py <network-config.json>`. It rejects overlapping or non-private
 VNet subnets, invalid App Service subnet delegation and unbounded runner HTTPS
-egress. The HTTPS destination list must
+egress. This hook has not been exercised by a real `azd up` and cannot enable
+provisioning. The HTTPS destination list must
 be derived and maintained for the actual deployment and authenticated control
 plane; structural validation does not establish connectivity or trust. The NSG
 allows private endpoint ports 443, 445, and 1433, DNS, storage service traffic,
@@ -146,3 +148,21 @@ state. Tests do not establish actual `up`/`down` ordering, crash recovery,
 ancestor-path replacement resistance, trusted caller context or protection
 against another process running as the same user. All lifecycle guards remain
 in place; do not activate the prototype as a deployment lock.
+
+## Planned scoped teardown (not implemented)
+
+`azd down` remains blocked. The pinned azd 1.38.0 Bicep implementation
+[discovers groups from the subscription deployment and deletes entire groups](https://github.com/Azure/azure-dev/blob/azure-dev-cli_1.38.0/cli/azd/pkg/azapi/standard_deployments.go),
+not just individual stack-tagged resources. Before using that supported native
+operation, a future `predown` gate must acquire the same cross-host lock,
+verify the current tenant, subscription, environment, generation and deployment,
+reconcile its exact discovered group IDs and contents against a durable
+ownership inventory, and refuse foreign or unknown resources. It must present
+the exact scope for explicit destruction approval; no `--purge` default or
+automatic rollback is permitted. The separate Container Apps managed group,
+partial deployments, soft-deleted resources and residual costs require
+verified reconciliation; ambiguous state retains the lock for manual recovery.
+The inventory check must also be protected against concurrent changes between
+verification and deletion; a cooperative lifecycle lock alone is insufficient.
+The inventory, predown gate, post-delete checks and real teardown are not yet
+implemented or verified, and later azd versions must be re-evaluated.

@@ -11,7 +11,7 @@ requiredVersions:
 hooks:
   preup:
     shell: pwsh
-    run: ./scripts/guard-incomplete.ps1
+    run: ./scripts/preup.ps1
   preprovision:
     shell: pwsh
     run: ./scripts/guard-incomplete.ps1
