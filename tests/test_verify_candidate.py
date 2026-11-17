@@ -62,6 +62,13 @@ class CandidateVerificationTests(unittest.TestCase):
         digest = create_candidate(self.root, external=b'{"service":"different"}')
         with self.assertRaisesRegex(ValueError, "provenance"):
             module.verify(self.root, SERVICE, COMMIT, digest)
+        digest = create_candidate(self.root)
+        manifest_path = self.root / "candidate.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["extra"] = "different"
+        manifest_path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, "Embedded and external"):
+            module.verify(self.root, SERVICE, COMMIT, digest)
 
     def test_rejects_unexpected_and_unsafe_archive_paths(self):
         digest = create_candidate(self.root, extra_name="../outside")

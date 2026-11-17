@@ -56,6 +56,8 @@ def verify(directory, service, commit, approved_digest):
     package = root / name
     if any(path.is_symlink() or not path.is_file() for path in (package, root / "SHA256SUMS", root / "candidate.json")):
         raise ValueError("Candidate artifact must contain regular files, not links.")
+    if package.stat().st_size > MAX_TOTAL or (root / "SHA256SUMS").stat().st_size > 256:
+        raise ValueError("Candidate package or checksum file exceeds size limit.")
     if (root / "SHA256SUMS").read_text(encoding="utf-8").strip() != f"{approved_digest}  {name}":
         raise ValueError("Checksum file does not match the independently approved package.")
     with package.open("rb") as stream:
