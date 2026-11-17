@@ -23,9 +23,13 @@ jobs:
       - name: Test private SQL grant orchestration
         shell: pwsh
         run: ./tests/test-invoke-private-sql-grants.ps1
+      - name: Install pinned Bicep
+        run: az bicep install --version v0.41.2
+      - name: Verify compiled private API security properties
+        shell: pwsh
+        run: ./tests/test-private-api-template.ps1
       - name: Compile private endpoint probe
         run: |
-          az bicep install --version v0.41.2
           az bicep build --file infra/modules/private-probe.bicep --stdout > /dev/null
           az bicep build --file infra/modules/sql-grants.bicep --stdout > /dev/null
           az bicep build --file infra/modules/service-databases.bicep --stdout > /dev/null
@@ -34,4 +38,5 @@ jobs:
           az bicep build --file infra/modules/shared-network.bicep --stdout > /dev/null
           az bicep build --file infra/modules/shared-observability-registry.bicep --stdout > /dev/null
           az bicep build --file infra/modules/shared-foundation.bicep --stdout > /dev/null
+          az bicep build --file infra/modules/private-api-hosting.bicep --stdout > /dev/null
           az bicep build --file infra/main.bicep --stdout > /dev/null

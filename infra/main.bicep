@@ -15,6 +15,20 @@ param runnerSubnetPrefix string
 param endpointSubnetPrefix string
 param applicationSubnets array
 
+@description('Names of distinct, Microsoft.Web/serverFarms-delegated application subnets in the shared VNet.')
+param devAppSubnetName string
+param stagingAppSubnetName string
+
+@description('Explicit audiences of the registered Students and Academics APIs for each environment.')
+@minLength(1)
+param devStudentsAudience string
+@minLength(1)
+param devAcademicsAudience string
+@minLength(1)
+param stagingStudentsAudience string
+@minLength(1)
+param stagingAcademicsAudience string
+
 @description('Verified explicit public CIDRs permitted for runner HTTPS egress.')
 @minLength(1)
 param runnerHttpsEgressPrefixes array
@@ -111,6 +125,42 @@ module stagingDatabases './modules/environment-databases.bicep' = {
   }
 }
 
+module devApis './modules/private-api-hosting.bicep' = {
+  name: 'adlc-dev-private-apis'
+  scope: devGroup
+  params: {
+    suffix: '${suffix}-dev'
+    location: location
+    appSubnetId: '${shared.outputs.networkResourceId}/subnets/${devAppSubnetName}'
+    endpointSubnetId: shared.outputs.endpointSubnetResourceId
+    appServiceDnsZoneId: shared.outputs.appServicePrivateDnsZoneResourceId
+    insightsResourceGroup: sharedGroupName
+    insightsName: 'appi-adlc-${suffix}-dev'
+    sqlServerName: 'sql-adlc-${suffix}-dev'
+    studentsAudience: devStudentsAudience
+    academicsAudience: devAcademicsAudience
+    tags: union(tags, { 'adlc-stage': 'dev' })
+  }
+}
+
+module stagingApis './modules/private-api-hosting.bicep' = {
+  name: 'adlc-staging-private-apis'
+  scope: stagingGroup
+  params: {
+    suffix: '${suffix}-staging'
+    location: location
+    appSubnetId: '${shared.outputs.networkResourceId}/subnets/${stagingAppSubnetName}'
+    endpointSubnetId: shared.outputs.endpointSubnetResourceId
+    appServiceDnsZoneId: shared.outputs.appServicePrivateDnsZoneResourceId
+    insightsResourceGroup: sharedGroupName
+    insightsName: 'appi-adlc-${suffix}-staging'
+    sqlServerName: 'sql-adlc-${suffix}-staging'
+    studentsAudience: stagingStudentsAudience
+    academicsAudience: stagingAcademicsAudience
+    tags: union(tags, { 'adlc-stage': 'staging' })
+  }
+}
+
 output ADLC_STACK_NAME string = environmentName
 output ADLC_STACK_GENERATION string = generation
 output ADLC_SHARED_RESOURCE_GROUP string = sharedGroup.name
@@ -131,3 +181,19 @@ output ADLC_REGISTRY_LOGIN_SERVER string = shared.outputs.registryLoginServer
 output ADLC_WORKSPACE_RESOURCE_ID string = shared.outputs.workspaceResourceId
 output ADLC_DEV_INSIGHTS_RESOURCE_ID string = shared.outputs.devInsightsResourceId
 output ADLC_STAGING_INSIGHTS_RESOURCE_ID string = shared.outputs.stagingInsightsResourceId
+output ADLC_DEV_STUDENTS_APP_ID string = devApis.outputs.studentsAppId
+output ADLC_DEV_STUDENTS_HOST string = devApis.outputs.studentsHostName
+output ADLC_DEV_STUDENTS_IDENTITY_NAME string = devApis.outputs.studentsIdentityName
+output ADLC_DEV_STUDENTS_IDENTITY_PRINCIPAL_ID string = devApis.outputs.studentsIdentityPrincipalId
+output ADLC_DEV_ACADEMICS_APP_ID string = devApis.outputs.academicsAppId
+output ADLC_DEV_ACADEMICS_HOST string = devApis.outputs.academicsHostName
+output ADLC_DEV_ACADEMICS_IDENTITY_NAME string = devApis.outputs.academicsIdentityName
+output ADLC_DEV_ACADEMICS_IDENTITY_PRINCIPAL_ID string = devApis.outputs.academicsIdentityPrincipalId
+output ADLC_STAGING_STUDENTS_APP_ID string = stagingApis.outputs.studentsAppId
+output ADLC_STAGING_STUDENTS_HOST string = stagingApis.outputs.studentsHostName
+output ADLC_STAGING_STUDENTS_IDENTITY_NAME string = stagingApis.outputs.studentsIdentityName
+output ADLC_STAGING_STUDENTS_IDENTITY_PRINCIPAL_ID string = stagingApis.outputs.studentsIdentityPrincipalId
+output ADLC_STAGING_ACADEMICS_APP_ID string = stagingApis.outputs.academicsAppId
+output ADLC_STAGING_ACADEMICS_HOST string = stagingApis.outputs.academicsHostName
+output ADLC_STAGING_ACADEMICS_IDENTITY_NAME string = stagingApis.outputs.academicsIdentityName
+output ADLC_STAGING_ACADEMICS_IDENTITY_PRINCIPAL_ID string = stagingApis.outputs.academicsIdentityPrincipalId

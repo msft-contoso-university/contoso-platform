@@ -13,7 +13,12 @@ def valid_config():
         "addressPrefix": "10.60.0.0/16",
         "runnerSubnetPrefix": "10.60.0.0/24",
         "endpointSubnetPrefix": "10.60.1.0/24",
-        "applicationSubnets": [{"name": "dev-apps", "addressPrefix": "10.60.2.0/24"}],
+        "applicationSubnets": [
+            {"name": "dev-apps", "addressPrefix": "10.60.2.0/24", "delegation": "Microsoft.Web/serverFarms"},
+            {"name": "staging-apps", "addressPrefix": "10.60.3.0/24", "delegation": "Microsoft.Web/serverFarms"},
+        ],
+        "devAppSubnetName": "dev-apps",
+        "stagingAppSubnetName": "staging-apps",
         "runnerHttpsEgressPrefixes": ["20.0.0.0/8"],
     }
 
@@ -45,6 +50,20 @@ class NetworkInputTests(unittest.TestCase):
         config = valid_config()
         config["applicationSubnets"][0]["name"] = "RUNNER"
         with self.assertRaisesRegex(ValueError, "duplicate"):
+            module.validate(config)
+
+    def test_api_subnets_must_be_distinct_and_delegated(self):
+        config = valid_config()
+        config["stagingAppSubnetName"] = "DEV-APPS"
+        with self.assertRaisesRegex(ValueError, "distinct"):
+            module.validate(config)
+        config = valid_config()
+        config["applicationSubnets"][0]["delegation"] = "Microsoft.ContainerInstance/containerGroups"
+        with self.assertRaisesRegex(ValueError, "delegated"):
+            module.validate(config)
+        config = valid_config()
+        config["applicationSubnets"][0]["addressPrefix"] = "10.60.2.0/29"
+        with self.assertRaisesRegex(ValueError, "at least /28"):
             module.validate(config)
 
 

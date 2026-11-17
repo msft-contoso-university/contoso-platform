@@ -25,9 +25,10 @@ NAT, restrictive runner NSG, private DNS zones, and a dedicated deployment-scrip
 identity and storage account. It also composes a private Premium registry,
 shared Log Analytics workspace, and separate dev/staging Application Insights
 resources. A separate awaited probe checks private DNS and TCP/TLS connectivity.
-These modules have only been compiled and unit-tested;
-they are not yet wired to azd, deploy workloads, or establish that a runner works
-in Azure. Do not deploy them independently as a substitute for the stack.
+The subscription-scope template composes these resources and private Students
+and Academics App Services for both stages. This remains incomplete and
+unvalidated in Azure; it does not deploy packages or establish runner
+connectivity. Do not deploy individual modules as a substitute for the stack.
 
 The storage account follows the documented private deployment-script path:
 shared-key capability is enabled, public network access is restricted by a
@@ -39,22 +40,25 @@ requirements and their permissions must be reviewed before deployment.
 The caller must validate explicit network inputs with
 `python scripts\validate-network-inputs.py <network-config.json>`; this check is
 not yet connected to an azd lifecycle. It rejects overlapping or non-private
-VNet subnets and unbounded runner HTTPS egress. The HTTPS destination list must
+VNet subnets, invalid App Service subnet delegation and unbounded runner HTTPS
+egress. The HTTPS destination list must
 be derived and maintained for the actual deployment and authenticated control
 plane; structural validation does not establish connectivity or trust. The NSG
 allows private endpoint ports 443, 445, and 1433, DNS, storage service traffic,
 and those explicit HTTPS ranges, and denies other runner outbound traffic.
 SQL connectivity must use a policy compatible with this port restriction.
 Application Insights local authentication is disabled: workloads need managed
-identity-based telemetry authentication and a scoped ingestion role. Neither
-the role wiring nor end-to-end telemetry has been implemented yet.
+identity-based telemetry authentication and a scoped ingestion role. The API
+hosting modules define that role per Application Insights resource, but neither
+role assignment nor end-to-end telemetry has been exercised in Azure.
 
 The SQL modules define private, Entra-only servers and one database per service.
 Each environment has a separate bootstrap identity; the private grant script
 assigns runtime identities read/write access and grants DDL only to distinct
-migration identities. SQL principal discovery permissions, the azd hook,
-application identity wiring, migrations, and the Azure execution itself are
-not yet complete. The copied Azure SQL grant scripts must not be run directly
+migration identities. The azd hook awaits private grant deployments and checks
+both stages' ownership and inputs, but lifecycle guards prevent it from running.
+SQL principal discovery permissions, migration identities, migrations, and
+Azure execution itself are not yet complete. The copied SQL grant scripts must not be run directly
 from an ordinary workstation against a private endpoint.
 
 `scripts\stack-lock.py` implements an experimental GitHub-backed stack lock:

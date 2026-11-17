@@ -43,6 +43,16 @@ def validate(config):
             raise ValueError(f"subnet {name} is outside the VNet")
         if any(subnet.overlaps(other) for _, other in subnets[:index]):
             raise ValueError(f"subnet {name} overlaps another subnet")
+    app_by_name = {subnet["name"].lower(): subnet for subnet in app_subnets}
+    dev_name = config["devAppSubnetName"]
+    staging_name = config["stagingAppSubnetName"]
+    if not isinstance(dev_name, str) or not isinstance(staging_name, str) or dev_name.lower() == staging_name.lower():
+        raise ValueError("dev and staging App Service subnets must be distinct names")
+    for name in (dev_name, staging_name):
+        subnet = app_by_name.get(name.lower())
+        if (subnet is None or subnet.get("delegation") != "Microsoft.Web/serverFarms"
+                or network(subnet["addressPrefix"]).prefixlen > 28):
+            raise ValueError(f"App Service subnet {name} must exist, be at least /28, and be delegated to Microsoft.Web/serverFarms")
     egress = config["runnerHttpsEgressPrefixes"]
     if not isinstance(egress, list) or not egress or len(egress) > 1000:
         raise ValueError("one to 1000 explicit runner HTTPS egress prefixes are required")

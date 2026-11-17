@@ -47,6 +47,10 @@ retain their separate gates.
 - [x] Entra-only private SQL and in-VNet grant modules compile; grant tooling
   and role separation have local tests. SQL principal discovery permissions,
   azd hook, migration, and actual in-network execution remain unverified.
+- [x] Dev and staging private Students and Academics App Service definitions
+  compile, including private endpoints, managed identities, Entra-only SQL
+  connection strings and resource-scoped telemetry roles. Workload deployment,
+  permissions, outbound network connectivity and live behavior are unverified.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
   azd lifecycle; no remote execution or resource provisioning has occurred.
