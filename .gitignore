@@ -1,3 +1,4 @@
 .azure/*
 !.azure/deployment-plan.md
 .sources/
+__pycache__/

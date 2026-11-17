@@ -37,9 +37,11 @@ retain their separate gates.
   to `msft-contoso-university/contoso-engineering`; neither is a release gate.
 - [x] Baseline source lock and PowerShell materialization pass local repeat and
   dirty-check tests. These locked baselines are not a deployable release.
+- [x] A standalone Bicep private-network connectivity probe compiles and has
+  local tests. It has not been deployed or integrated into a lifecycle.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
-  azd lifecycle; no remote execution or resource provisioning exists yet.
+  azd lifecycle; no remote execution or resource provisioning has occurred.
 - [ ] Implement workload, platform, integration and deterministic checks.
 - [ ] Select region and establish resource inventory, quotas and capacity.
 - [ ] Complete identity, GitHub, SRE and consent prerequisites.
