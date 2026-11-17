@@ -19,8 +19,11 @@ jobs:
         shell: pwsh
         run: ./tests/test-materialize-sources.ps1
       - name: Test private endpoint probe
-        run: python3 -B -m unittest discover -s tests -p test_private_probe.py -v
+        run: python3 -B -m unittest discover -s tests -p 'test_*.py' -v
       - name: Compile private endpoint probe
         run: |
           az bicep install --version v0.41.2
           az bicep build --file infra/modules/private-probe.bicep --stdout > /dev/null
+          az bicep build --file infra/modules/private-execution-storage.bicep --stdout > /dev/null
+          az bicep build --file infra/modules/shared-network.bicep --stdout > /dev/null
+          az bicep build --file infra/modules/shared-foundation.bicep --stdout > /dev/null

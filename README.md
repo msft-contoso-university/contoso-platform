@@ -16,3 +16,29 @@ only, and the students main branch contains characterization tests only.
 
 `pwsh -File scripts\materialize-sources.ps1 -ValidateOnly` checks lock structure
 without network access; it does not verify release readiness or deploy anything.
+
+## Private execution foundation (incomplete)
+
+The shared foundation Bicep composes one VNet, a delegated ACI runner subnet,
+NAT, restrictive runner NSG, private DNS zones, and a dedicated deployment-script
+identity and storage account. A separate awaited probe checks private DNS and
+TCP/TLS connectivity. These modules have only been compiled and unit-tested;
+they are not yet wired to azd, deploy workloads, or establish that a runner works
+in Azure. Do not deploy them independently as a substitute for the stack.
+
+The storage account follows the documented private deployment-script path:
+shared-key capability is enabled, public network access is restricted by a
+deny-by-default firewall, a storage service endpoint and trusted-services
+exception, and an Azure Files private endpoint. The runner identity receives
+Storage File Data Privileged Contributor only on that storage account. These
+requirements and their permissions must be reviewed before deployment.
+
+The caller must validate explicit network inputs with
+`python scripts\validate-network-inputs.py <network-config.json>`; this check is
+not yet connected to an azd lifecycle. It rejects overlapping or non-private
+VNet subnets and unbounded runner HTTPS egress. The HTTPS destination list must
+be derived and maintained for the actual deployment and authenticated control
+plane; structural validation does not establish connectivity or trust. The NSG
+allows private endpoint ports 443, 445, and 1433, DNS, storage service traffic,
+and those explicit HTTPS ranges, and denies other runner outbound traffic.
+SQL connectivity must use a policy compatible with this port restriction.

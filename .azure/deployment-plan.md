@@ -39,6 +39,9 @@ retain their separate gates.
   dirty-check tests. These locked baselines are not a deployable release.
 - [x] A standalone Bicep private-network connectivity probe compiles and has
   local tests. It has not been deployed or integrated into a lifecycle.
+- [x] Shared VNet, runner NAT/NSG, private DNS and private execution storage
+  modules compose and compile; their network-input validator has local tests.
+  Their security, egress, readiness and actual connectivity remain unverified.
 - [ ] Characterize the original application and define preserved contracts.
 - [ ] Implement and validate the private execution bootstrap and complete
   azd lifecycle; no remote execution or resource provisioning has occurred.
