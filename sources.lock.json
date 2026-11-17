@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "repositories": [
+    { "name": "contoso-web", "commit": "1d37e13b12054ee72ec207d64febfd1eae37846d" },
+    { "name": "contoso-students", "commit": "aa76d6a4c59f7bc1de01739a3cbc7a594caa47df" },
+    { "name": "contoso-academics", "commit": "2414ea8b07f9d9ff0ebfbc6d841a97a439a7e1bd" },
+    { "name": "contoso-enrollments", "commit": "f1aba74dc5465fd560be8ee254521acfaf0fe794" }
+  ]
+}

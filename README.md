@@ -1,2 +1,168 @@
 # contoso-platform
 Reproducible Azure ADLC demo lifecycle with azd, Bicep, GitHub agents and SRE
+
+**Not deployable yet.** The azd entrypoint is deliberately fail-closed:
+`up`, `provision`, `deploy`, and `down` are blocked while private deployment,
+workload infrastructure, integrations, and teardown remain incomplete.
+
+## Locked source bootstrap
+
+Run `pwsh -File scripts\materialize-sources.ps1` before azd evaluates service
+project paths. It materializes only the four allowlisted public application
+repositories at the exact commits in `sources.lock.json`, and refuses to
+overwrite, switch or clean an existing checkout. If a clone fails, inspect the
+named partial checkout before retrying. The current lock records initial
+baselines, not an approved release: three repositories contain documentation
+only, and the students main branch contains characterization tests only.
+
+`pwsh -File scripts\materialize-sources.ps1 -ValidateOnly` checks lock structure
+without network access; it does not verify release readiness or deploy anything.
+
+## Stack inputs
+
+`infra/main.bicepparam` binds one azd environment to the shared stack and both
+stages. It requires `AZURE_ENV_NAME`, `AZURE_LOCATION`,
+`ADLC_STACK_GENERATION`, `ADLC_VNET_PREFIX`, `ADLC_RUNNER_SUBNET_PREFIX`,
+`ADLC_ENDPOINT_SUBNET_PREFIX`, `ADLC_APPLICATION_SUBNETS` (JSON array),
+`ADLC_DEV_APP_SUBNET_NAME`, `ADLC_STAGING_APP_SUBNET_NAME`,
+`ADLC_DEV_CONTAINER_SUBNET_NAME`, `ADLC_STAGING_CONTAINER_SUBNET_NAME`,
+`ADLC_RUNNER_HTTPS_EGRESS_PREFIXES` (JSON array), `ADLC_DATABASE_SKU` (JSON
+object), and `ADLC_LOG_DAILY_QUOTA_GB` (integer), plus
+`ADLC_{DEV,STAGING}_{STUDENTS,ACADEMICS}_AUDIENCE`,
+`ADLC_{DEV,STAGING}_WEB_CLIENT_ID`, and
+`ADLC_{DEV,STAGING}_{STUDENTS,ACADEMICS,ENROLLMENTS}_READ_SCOPE` and
+`ADLC_{DEV,STAGING}_ENROLLMENTS_WRITE_SCOPE`. There are no target or
+region defaults. These parameters are an incomplete interface, not permission
+to provision; additional inputs and validation are still required. A missing
+environment variable can compile to an empty string on Windows, so a future
+lifecycle preflight must reject empty values before any deployment.
+
+## Private execution foundation (incomplete)
+
+The shared foundation Bicep composes one VNet, a delegated ACI runner subnet,
+NAT, restrictive runner NSG, private DNS zones, and a dedicated deployment-script
+identity and storage account. It also composes a private Premium registry,
+shared Log Analytics workspace, and separate dev/staging Application Insights
+resources. A separate awaited probe checks private DNS and TCP/TLS connectivity.
+The subscription-scope template composes these resources and private Students
+and Academics App Services for both stages. It also defines a public HTTPS
+Web app per stage with a private deployment endpoint and public SCM access
+denied. Each Web app shares its stage's single-instance plan, uses a separate
+managed identity and persistent `/home` storage for its cookie keys, and
+receives delegated scope configuration rather than app-only API permissions.
+Web client registration, workload identity federation, user consent,
+HTTPS-only platform readback, persistent key isolation, SCM network access
+and service-to-service DNS remain unverified. In particular, do not enable
+the public entrypoint until the deployed Web version's App Service HTTPS-only
+contract, native hostname, HTTP redirect and exclusive worker ingress have
+been verified. No forwarded-header trust is configured.
+The Web template derives the Enrollments hostname from the environment domain;
+the release phase must compare it with the deployed app's actual ingress FQDN.
+This remains incomplete and
+unvalidated in Azure; it does not deploy packages or establish runner
+connectivity. Do not deploy individual modules as a substitute for the stack.
+The same template provisions internal Container Apps environments and records
+their platform-managed infrastructure group names. A separate release module
+requires an existing private-registry image digest, avoiding a first-deployment
+dependency cycle. The protected build/push/release orchestration is not yet
+implemented, and teardown must account for the platform-managed groups.
+
+The storage account follows the documented private deployment-script path:
+shared-key capability is enabled, public network access is restricted by a
+deny-by-default firewall, a storage service endpoint and trusted-services
+exception, and an Azure Files private endpoint. The runner identity receives
+Storage File Data Privileged Contributor only on that storage account. These
+requirements and their permissions must be reviewed before deployment.
+
+The canonical `preup` hook reads the azd environment's network inputs and
+runs `scripts\validate-network-inputs.py --azd-env` before the incomplete
+lifecycle guard. The same validator accepts a JSON file for offline checking:
+`python scripts\validate-network-inputs.py <network-config.json>`. It rejects overlapping or non-private
+VNet subnets, invalid App Service subnet delegation and unbounded runner HTTPS
+egress. This hook has not been exercised by a real `azd up` and cannot enable
+provisioning. The HTTPS destination list must
+be derived and maintained for the actual deployment and authenticated control
+plane; structural validation does not establish connectivity or trust. The NSG
+allows private endpoint ports 443, 445, and 1433, DNS, storage service traffic,
+and those explicit HTTPS ranges, and denies other runner outbound traffic.
+SQL connectivity must use a policy compatible with this port restriction.
+Application Insights local authentication is disabled: workloads need managed
+identity-based telemetry authentication and a scoped ingestion role. The API
+hosting modules define that role per Application Insights resource, but neither
+role assignment nor end-to-end telemetry has been exercised in Azure.
+
+The SQL modules define private, Entra-only servers and one database per service.
+Each environment has a separate bootstrap identity; the private grant script
+is intended to assign runtime identities read/write access and grant DDL only to distinct
+migration identities. Each service has a separate migration identity and
+scoped execution-storage access; migration execution is not yet wired. The
+blocked grant hook verifies ownership, runtime-identity attachments, and the
+internal Enrollments environment for both stages. It needs the Enrollments app
+IDs from the later image-release phase; that release and the required hook
+reordering are not yet implemented. It is additionally blocked because the
+copied Azure grant script does not verify an existing database principal's SID
+against the managed identity client ID. Its proposed replacement generates a
+transactional, exact-client-ID SID check and grants; it has only been unit-tested,
+not executed against Azure SQL. Both the private runner and hook remain blocked,
+and lifecycle guards independently prevent execution. The copied scripts are
+retained for reference, not used by the proposed replacement.
+SQL principal discovery permissions, migration identities, migrations, and
+Azure execution itself are not yet complete. The copied SQL grant scripts must not be run directly
+from an ordinary workstation against a private endpoint.
+
+`scripts\verify-candidate.py` checks a Web, Students, or Academics candidate
+ZIP against an independently supplied source commit and approved SHA-256,
+including its embedded manifest and every file hash, without extraction. It
+does not determine approval, retrieve artifacts, deploy, or prove provenance.
+It is not yet integrated into the private transport or release lifecycle.
+
+`scripts\verify-oci-candidate.py` checks the Enrollments OCI archive and SQL
+migration against separately supplied approved SHA-256 values and the source
+commit. It verifies manifest/config/layer hashes and uncompressed layer DiffIDs
+without extracting the archive. Run it on a controlled, immutable artifact
+directory; it does not establish approval or provenance, retrieve, import or
+deploy the image, or prove that a registry preserved its digest.
+
+`scripts\stack-lock.py` implements an experimental GitHub-backed stack lock:
+create is atomic and release checks the owner's operation ID, action,
+generation and current blob SHA. All generations of the same
+tenant/subscription/environment share a lock.
+It requires a separately provisioned `adlc-state` branch and tightly scoped
+write credentials, neither of which has been configured or verified. The
+lifecycle does not yet invoke it. Do not clear an abandoned lock until the
+owning operation is known to have stopped and the exact recovery is approved.
+`scripts\run-locked-azd.py` is a disabled prototype: its tested core passes a
+fresh operation ID only to the child process and retains the lock on failure.
+It cannot run via its CLI, does not integrate hook verification, and blocks
+destroy entirely. It does not satisfy the required direct `azd up` and
+confirmed `azd down` lifecycle.
+
+`scripts\get-azd-ancestor.ps1` identifies a live azd ancestor and can require
+an `up` or `down` command, rejecting independent hook runs. The experimental
+`scripts\native-stack-lock.ps1` composes action-bound identity, an exclusively
+created local private owner file and the GitHub CAS lock, currently for `up`
+only. The random private nonce never enters the public lock; the private file
+itself is the local capability, not independent hook authentication. These
+functions are not wired into lifecycle hooks and have created no real lock
+state. Tests do not establish actual `up`/`down` ordering, crash recovery,
+ancestor-path replacement resistance, trusted caller context or protection
+against another process running as the same user. All lifecycle guards remain
+in place; do not activate the prototype as a deployment lock.
+
+## Planned scoped teardown (not implemented)
+
+`azd down` remains blocked. The pinned azd 1.38.0 Bicep implementation
+[discovers groups from the subscription deployment and deletes entire groups](https://github.com/Azure/azure-dev/blob/azure-dev-cli_1.38.0/cli/azd/pkg/azapi/standard_deployments.go),
+not just individual stack-tagged resources. Before using that supported native
+operation, a future `predown` gate must acquire the same cross-host lock,
+verify the current tenant, subscription, environment, generation and deployment,
+reconcile its exact discovered group IDs and contents against a durable
+ownership inventory, and refuse foreign or unknown resources. It must present
+the exact scope for explicit destruction approval; no `--purge` default or
+automatic rollback is permitted. The separate Container Apps managed group,
+partial deployments, soft-deleted resources and residual costs require
+verified reconciliation; ambiguous state retains the lock for manual recovery.
+The inventory check must also be protected against concurrent changes between
+verification and deletion; a cooperative lifecycle lock alone is insufficient.
+The inventory, predown gate, post-delete checks and real teardown are not yet
+implemented or verified, and later azd versions must be re-evaluated.
