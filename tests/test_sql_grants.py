@@ -2,6 +2,8 @@ import importlib.util
 import hashlib
 import io
 import json
+import re
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -112,6 +114,36 @@ class SqlGrantTests(unittest.TestCase):
                 with self.assertRaises(module.subprocess.CalledProcessError):
                     module.run("school-sql", CLIENT, TARGETS, str(output))
             self.assertFalse(output.exists())
+
+    def test_only_plain_database_connect_is_exempt_from_grant_check(self):
+        query = module.grant_sql(TARGET)
+        predicates = re.findall(
+            r"WHERE m\.name = N'([^']+)' AND (p\.state IN \('G', 'W'\)\s+"
+            r"AND NOT \(p\.state = 'G'.*?p\.minor_id = 0\))\)",
+            query,
+            re.DOTALL,
+        )
+        self.assertEqual({name for name, _ in predicates}, {"students-api", "students-migration"})
+        cases = [
+            ("G", "CONNECT", 0, 0, 0, False),
+            ("W", "CONNECT", 0, 0, 0, True),
+            ("G", "CONNECT", 1, 123, 0, True),
+            ("G", "SELECT", 0, 0, 0, True),
+            ("W", "SELECT", 0, 0, 0, True),
+            ("D", "CONNECT", 0, 0, 0, False),
+        ]
+        with sqlite3.connect(":memory:") as database:
+            for name, predicate in predicates:
+                expression = predicate.replace("N'CONNECT'", "'CONNECT'")
+                for state, permission, scope, major, minor, rejected in cases:
+                    with self.subTest(identity=name, state=state, permission=permission, scope=scope):
+                        result = database.execute(
+                            f"SELECT {expression} FROM "
+                            "(SELECT ? AS state, ? AS permission_name, ? AS class, "
+                            "? AS major_id, ? AS minor_id) p",
+                            (state, permission, scope, major, minor),
+                        ).fetchone()[0]
+                        self.assertEqual(bool(result), rejected)
 
     def test_binary_download_checks_digest_before_extracting(self):
         blob = io.BytesIO()

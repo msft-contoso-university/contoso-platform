@@ -110,7 +110,9 @@ def grant_sql(target):
             f"    THROW 51011, '{identity_kind} identity has an unexpected database role.', 1;",
             "IF EXISTS (SELECT 1 FROM sys.database_permissions p",
             "    JOIN sys.database_principals m ON m.principal_id = p.grantee_principal_id",
-            f"    WHERE m.name = N'{name}' AND p.state IN ('G', 'W') AND p.permission_name <> N'CONNECT')",
+            f"    WHERE m.name = N'{name}' AND p.state IN ('G', 'W')",
+            "    AND NOT (p.state = 'G' AND p.permission_name = N'CONNECT'",
+            "        AND p.class = 0 AND p.major_id = 0 AND p.minor_id = 0))",
             f"    THROW 51012, '{identity_kind} identity has an unexpected explicit database grant.', 1;",
         ])
         for role in roles:
