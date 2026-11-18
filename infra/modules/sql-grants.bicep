@@ -9,7 +9,7 @@ param runnerSubnetResourceId string
 param sqlServerName string
 
 @description('Entries with database, runtime and migration identity names and client IDs.')
-@minLength(1)
+@minLength(3)
 @maxLength(3)
 param targets array
 param tags object

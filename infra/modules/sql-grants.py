@@ -27,8 +27,8 @@ def validate(server, client_id, targets):
     bootstrap_id = uuid.UUID(client_id)
     if bootstrap_id.int == 0:
         raise ValueError("bootstrap client ID must not be empty")
-    if not isinstance(targets, list) or not 1 <= len(targets) <= len(DATABASES):
-        raise ValueError("one to three database grants are required")
+    if not isinstance(targets, list) or len(targets) != len(DATABASES):
+        raise ValueError("all three service database grants are required")
     databases = set()
     runtime_names = set()
     migration_names = set()
@@ -97,21 +97,24 @@ def grant_sql(target):
             f"IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'{name}')",
             f"    CREATE USER [{name}] WITH SID = {sid}, TYPE = E;",
         ])
-        if kind == "runtime":
-            statements.extend([
-                "IF EXISTS (SELECT 1 FROM sys.database_role_members rm",
-                "    JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id",
-                "    JOIN sys.database_principals m ON m.principal_id = rm.member_principal_id",
-                f"    WHERE m.name = N'{name}' AND r.name NOT IN (N'db_datareader', N'db_datawriter'))",
-                "    THROW 51011, 'Runtime identity has an unexpected database role.', 1;",
-                "IF EXISTS (SELECT 1 FROM sys.database_permissions p",
-                "    JOIN sys.database_principals m ON m.principal_id = p.grantee_principal_id",
-                f"    WHERE m.name = N'{name}' AND p.state IN ('G', 'W') AND p.permission_name <> N'CONNECT')",
-                "    THROW 51012, 'Runtime identity has unexpected explicit database permissions.', 1;",
-            ])
         roles = ["db_datareader", "db_datawriter"]
         if kind == "migration":
             roles.append("db_ddladmin")
+        allowed_roles = ", ".join(f"N'{role}'" for role in roles)
+        identity_kind = kind.capitalize()
+        statements.extend([
+            "IF EXISTS (SELECT 1 FROM sys.database_role_members rm",
+            "    JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id",
+            "    JOIN sys.database_principals m ON m.principal_id = rm.member_principal_id",
+            f"    WHERE m.name = N'{name}' AND r.name NOT IN ({allowed_roles}))",
+            f"    THROW 51011, '{identity_kind} identity has an unexpected database role.', 1;",
+            "IF EXISTS (SELECT 1 FROM sys.database_permissions p",
+            "    JOIN sys.database_principals m ON m.principal_id = p.grantee_principal_id",
+            f"    WHERE m.name = N'{name}' AND p.state IN ('G', 'W')",
+            "    AND NOT (p.state = 'G' AND p.permission_name = N'CONNECT'",
+            "        AND p.class = 0 AND p.major_id = 0 AND p.minor_id = 0))",
+            f"    THROW 51012, '{identity_kind} identity has an unexpected explicit database grant.', 1;",
+        ])
         for role in roles:
             statements.extend([
                 "IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm",

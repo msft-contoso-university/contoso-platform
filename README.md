@@ -102,9 +102,13 @@ IDs from the later image-release phase; that release and the required hook
 reordering are not yet implemented. It is additionally blocked because the
 copied Azure grant script does not verify an existing database principal's SID
 against the managed identity client ID. Its proposed replacement generates a
-transactional, exact-client-ID SID check and grants; it has only been unit-tested,
-not executed against Azure SQL. Both the private runner and hook remain blocked,
-and lifecycle guards independently prevent execution. The copied scripts are
+transactional, exact-client-ID SID check and grants. It also refuses preexisting
+extra database roles or explicit grants on either runtime or migration
+identities; only the migration identity may have `db_ddladmin`. It has only been
+unit-tested, not executed against Azure SQL. Only a plain database-level
+`CONNECT` grant is exempt; grants with grant option are rejected. It validates the complete three-
+database grant set before connecting. Both the private runner and hook remain
+blocked, and lifecycle guards independently prevent execution. The copied scripts are
 retained for reference, not used by the proposed replacement.
 SQL principal discovery permissions, migration identities, migrations, and
 Azure execution itself are not yet complete. The copied SQL grant scripts must not be run directly
